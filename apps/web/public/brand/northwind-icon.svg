@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title">
+  <title id="title">Northwind</title>
+  <path
+    fill="#0066CC"
+    d="M57 0C30 0 16.6 0 8.3 8.3S0 30 0 57v14c0 27 0 40.4 8.3 48.7S30 128 57 128h14c27 0 40.4 0 48.7-8.3S128 98 128 71V57c0-27 0-40.4-8.3-48.7S98 0 71 0H57Z"
+  />
+  <g fill="#fff" transform="matrix(1.7 0 0 1.7 8 12)">
+    <rect x="6" y="43" width="10" height="10" rx="2.5"/>
+    <rect x="25" y="27" width="14" height="14" rx="3.5"/>
+    <rect x="44" y="8" width="16" height="16" rx="4"/>
+  </g>
+</svg>

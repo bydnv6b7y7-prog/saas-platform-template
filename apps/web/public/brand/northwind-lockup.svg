@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 80" role="img" aria-labelledby="title">
+  <title id="title">Northwind</title>
+  <g fill="#0066CC" transform="translate(7 10)">
+    <rect x="6" y="43" width="10" height="10" rx="2.5"/>
+    <rect x="25" y="27" width="14" height="14" rx="3.5"/>
+    <rect x="44" y="8" width="16" height="16" rx="4"/>
+  </g>
+  <text
+    x="82"
+    y="54"
+    fill="#17181B"
+    font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', Inter, Arial, sans-serif"
+    font-size="42"
+    font-weight="600"
+    letter-spacing="-0.8"
+  >Northwind</text>
+</svg>

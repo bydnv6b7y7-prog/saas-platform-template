@@ -1,0 +1,31 @@
+{
+  "name": "@northwind/product",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./schema": {
+      "default": "./src/schema/index.ts"
+    },
+    "./*": {
+      "default": "./src/*.ts"
+    }
+  },
+  "scripts": {
+    "check-types": "tsc --noEmit",
+    "db:post-migrate": "echo 'No product post-migrate steps.'"
+  },
+  "dependencies": {
+    "@northwind/api": "workspace:*",
+    "@northwind/env": "workspace:*",
+    "@t3-oss/env-core": "^0.13.11",
+    "@trpc/server": "catalog:",
+    "dotenv": "catalog:",
+    "drizzle-orm": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@northwind/config": "workspace:*",
+    "@types/bun": "catalog:",
+    "typescript": "catalog:"
+  }
+}

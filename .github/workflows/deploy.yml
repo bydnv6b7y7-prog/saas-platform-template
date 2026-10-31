@@ -1,0 +1,575 @@
+name: Deploy immutable release
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/**"
+      - "packages/**"
+      - "patches/**"
+      - "scripts/**"
+      - "package.json"
+      - "bun.lock"
+      - "bunfig.toml"
+      - "turbo.json"
+      - "tsconfig.json"
+      - ".dockerignore"
+      - "docker-compose.yml"
+      - ".github/workflows/deploy.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAMESPACE: ${{ vars.IMAGE_NAMESPACE || github.repository_owner }}
+  PLATFORM: linux/amd64
+  VITE_BRAND_NAME: ${{ vars.PRODUCTION_BRAND_NAME }}
+  VITE_ENABLE_INDEXING: ${{ vars.PRODUCTION_ENABLE_INDEXING || 'false' }}
+  # Empty means the defaults in packages/env/src/posthog-hosts.ts (resolved in each job).
+  VITE_POSTHOG_HOST: ${{ vars.VITE_POSTHOG_HOST }}
+  POSTHOG_HOST: ${{ vars.POSTHOG_HOST }}
+  # production = Live Stripe keys; staging = Test keys. Integrations listed here must be configured.
+  DEPLOY_STAGE: ${{ vars.DEPLOY_STAGE || 'production' }}
+  REQUIRED_INTEGRATIONS: ${{ vars.REQUIRED_INTEGRATIONS || 'email' }}
+  COPILOTKIT_TELEMETRY_DISABLED: "true"
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_DB: market_intelligence_verify
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d market_intelligence_verify"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: "1.4.4"
+      - name: Resolve deployment defaults
+        run: |
+          set -euo pipefail
+          defaults="$(bun -e 'const h = await import("./packages/env/src/posthog-hosts.ts"); console.log(h.POSTHOG_BROWSER_PROXY_HOST + " " + h.POSTHOG_INGESTION_HOST)')"
+          read -r browser_default server_default <<< "${defaults}"
+          echo "VITE_POSTHOG_HOST=${VITE_POSTHOG_HOST:-${browser_default}}" >> "${GITHUB_ENV}"
+          echo "POSTHOG_HOST=${POSTHOG_HOST:-${server_default}}" >> "${GITHUB_ENV}"
+          echo "POSTHOG_BROWSER_DEFAULT=${browser_default}" >> "${GITHUB_ENV}"
+      - name: Validate production release contract
+        env:
+          DOKPLOY_URL: ${{ secrets.DOKPLOY_URL }}
+          DOKPLOY_API_KEY: ${{ secrets.DOKPLOY_API_KEY }}
+          DOKPLOY_MIGRATION_APPLICATION_ID: ${{ secrets.DOKPLOY_MIGRATION_APPLICATION_ID }}
+          DOKPLOY_SERVER_APPLICATION_ID: ${{ secrets.DOKPLOY_SERVER_APPLICATION_ID }}
+          DOKPLOY_WEB_APPLICATION_ID: ${{ secrets.DOKPLOY_WEB_APPLICATION_ID }}
+          DOKPLOY_WORKER_APPLICATION_ID: ${{ secrets.DOKPLOY_WORKER_APPLICATION_ID }}
+          DOCKER_REGISTRY_USERNAME: ${{ secrets.DOCKER_REGISTRY_USERNAME }}
+          DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_REGISTRY_PASSWORD }}
+          VITE_SERVER_URL: ${{ secrets.VITE_SERVER_URL }}
+          VITE_WEB_URL: ${{ secrets.VITE_WEB_URL }}
+          POSTHOG_PROJECT_TOKEN: ${{ secrets.POSTHOG_PROJECT_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ "${GITHUB_REF}" != "refs/heads/main" ]; then
+            echo "Production releases must run from main; got ${GITHUB_REF}."
+            exit 1
+          fi
+          if [ "${DEPLOY_STAGE}" != "production" ] && [ "${DEPLOY_STAGE}" != "staging" ]; then
+            echo "DEPLOY_STAGE must be production or staging."
+            exit 1
+          fi
+          required=(
+            VITE_BRAND_NAME
+            VITE_SERVER_URL
+            VITE_WEB_URL
+            DOKPLOY_URL
+            DOKPLOY_API_KEY
+            DOKPLOY_MIGRATION_APPLICATION_ID
+            DOKPLOY_SERVER_APPLICATION_ID
+            DOKPLOY_WEB_APPLICATION_ID
+            DOCKER_REGISTRY_USERNAME
+            DOCKER_REGISTRY_PASSWORD
+          )
+          if [[ ",${REQUIRED_INTEGRATIONS}," == *",posthog,"* ]]; then
+            required+=(POSTHOG_PROJECT_TOKEN)
+          fi
+          for name in "${required[@]}"; do
+            if [ -z "${!name:-}" ]; then
+              echo "Missing required production configuration: ${name}."
+              exit 1
+            fi
+          done
+          for name in VITE_SERVER_URL VITE_WEB_URL DOKPLOY_URL VITE_POSTHOG_HOST POSTHOG_HOST; do
+            if [[ ! "${!name}" =~ ^https://[^[:space:]]+$ ]]; then
+              echo "${name} must be an explicit HTTPS URL."
+              exit 1
+            fi
+          done
+          for name in VITE_POSTHOG_HOST POSTHOG_HOST; do
+            if [[ ! "${!name}" =~ ^https://[^/[:space:]?#]+/?$ ]]; then
+              echo "${name} must be an HTTPS origin without a path, query, or fragment."
+              exit 1
+            fi
+          done
+          if [ -n "${POSTHOG_PROJECT_TOKEN:-}" ]; then
+            if [[ ! "${POSTHOG_PROJECT_TOKEN}" =~ ^phc_[A-Za-z0-9_-]{20,}$ ]]; then
+              echo "POSTHOG_PROJECT_TOKEN must be a PostHog project token."
+              exit 1
+            fi
+            browser_posthog_host="$(printf '%s' "${VITE_POSTHOG_HOST%/}" | tr '[:upper:]' '[:lower:]')"
+            server_posthog_host="$(printf '%s' "${POSTHOG_HOST%/}" | tr '[:upper:]' '[:lower:]')"
+            browser_default="$(printf '%s' "${POSTHOG_BROWSER_DEFAULT%/}" | tr '[:upper:]' '[:lower:]')"
+            if [[ "${browser_posthog_host}" == "${server_posthog_host}" ]]; then
+              echo "Browser PostHog proxy and server ingestion origins must remain separate."
+              exit 1
+            fi
+            if [[ "${server_posthog_host}" == "${browser_default}" ]]; then
+              echo "POSTHOG_HOST must use direct server ingestion, not the browser proxy."
+              exit 1
+            fi
+          fi
+          if [[ ! "${IMAGE_NAMESPACE}" =~ ^[a-z0-9][a-z0-9._-]*$ ]]; then
+            echo "IMAGE_NAMESPACE is not a valid lowercase GHCR namespace."
+            exit 1
+          fi
+          if [ "${VITE_ENABLE_INDEXING}" != "true" ] && [ "${VITE_ENABLE_INDEXING}" != "false" ]; then
+            echo "PRODUCTION_ENABLE_INDEXING must be true or false."
+            exit 1
+          fi
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Validate release files
+        run: |
+          docker compose config >/dev/null
+          bash -n \
+            scripts/api-smoke.sh \
+            scripts/backup-postgres.sh \
+            scripts/deploy-production.sh \
+            scripts/restore-verify.sh \
+            scripts/web-smoke.sh
+      - name: Type check
+        run: bun run check-types
+        env:
+          SKIP_ENV_VALIDATION: "1"
+          VITE_SERVER_URL: http://localhost:3000
+          VITE_WEB_URL: http://localhost:3001
+          VITE_ENABLE_INDEXING: "false"
+      - name: Unit tests
+        run: bun run test
+        env:
+          SKIP_ENV_VALIDATION: "1"
+      - name: Production build
+        run: bun run build
+        env:
+          SKIP_ENV_VALIDATION: "1"
+          VITE_SERVER_URL: http://localhost:3000
+          VITE_BRAND_NAME: ${{ env.VITE_BRAND_NAME }}
+          VITE_WEB_URL: ${{ secrets.VITE_WEB_URL }}
+          VITE_ENABLE_INDEXING: ${{ env.VITE_ENABLE_INDEXING }}
+          VITE_POSTHOG_PROJECT_TOKEN: ${{ secrets.POSTHOG_PROJECT_TOKEN }}
+          VITE_POSTHOG_HOST: ${{ env.VITE_POSTHOG_HOST }}
+      - name: Email OTP PostgreSQL integration tests
+        run: |
+          bun -e 'const url = new URL(process.env.EMAIL_OTP_TEST_DATABASE_URL); url.pathname = "/postgres"; const db = new Bun.SQL(url.href); await db.unsafe("CREATE DATABASE email_otp_test"); await db.close();'
+          bun test packages/auth/src/email-otp.postgres.test.ts
+        env:
+          SKIP_ENV_VALIDATION: "1"
+          EMAIL_OTP_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/email_otp_test
+      - name: Migration safety check
+        run: |
+          # 破坏性迁移必须走显式评审的发布路径：评审通过的迁移在这里按文件放行。
+          if grep -Ein 'DROP[[:space:]]+(TABLE|COLUMN)|TRUNCATE|DELETE[[:space:]]+FROM' packages/db/src/migrations/*.sql; then
+            echo "Destructive migration requires an explicit reviewed release path."
+            exit 1
+          fi
+      - name: Admin users PostgreSQL integration tests
+        run: |
+          bun -e 'const url = new URL(process.env.ADMIN_USERS_TEST_DATABASE_URL); url.pathname = "/postgres"; const db = new Bun.SQL(url.href); await db.unsafe("CREATE DATABASE northwind_admin_users_test"); await db.close();'
+          bun test packages/auth/src/admin-users.postgres.test.ts
+        env:
+          SKIP_ENV_VALIDATION: "1"
+          ADMIN_USERS_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/northwind_admin_users_test
+      - name: Operational settings PostgreSQL integration tests
+        run: |
+          bun -e 'const url = new URL(process.env.OPS_TEST_DATABASE_URL); url.pathname = "/postgres"; const db = new Bun.SQL(url.href); await db.unsafe("CREATE DATABASE northwind_config_governance_test"); await db.close();'
+          bun test packages/api/src/operational-settings.integration.test.ts
+        env:
+          SKIP_ENV_VALIDATION: "1"
+          OPS_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/northwind_config_governance_test
+      - name: App Store Admin PostgreSQL integration tests
+        run: |
+          bun -e 'const url = new URL(process.env.IAP_ADMIN_TEST_DATABASE_URL); url.pathname = "/postgres"; const db = new Bun.SQL(url.href); await db.unsafe("CREATE DATABASE northwind_iap_admin_test"); await db.close();'
+          bun test packages/api/src/app-store-admin.integration.test.ts
+        env:
+          SKIP_ENV_VALIDATION: "1"
+          IAP_ADMIN_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/northwind_iap_admin_test
+      - name: App feedback PostgreSQL integration tests
+        run: |
+          bun -e 'const url = new URL(process.env.APP_FEEDBACK_TEST_DATABASE_URL); url.pathname = "/postgres"; const db = new Bun.SQL(url.href); await db.unsafe("CREATE DATABASE northwind_app_feedback_test"); await db.close();'
+          bun test apps/server/src/app-client/app-client.integration.test.ts
+        env:
+          SKIP_ENV_VALIDATION: "1"
+          APP_FEEDBACK_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/northwind_app_feedback_test
+      - name: Empty database migration and idempotency
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/market_intelligence_verify
+          SKIP_ENV_VALIDATION: "1"
+        run: |
+          cd packages/db
+          bun run db:migrate:production
+          bun run db:migrate:production
+          cd ../../apps/server
+          bun run mastra:migrate
+          bun run mastra:migrate
+      - name: Web SSR integration smoke
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/market_intelligence_verify
+          BETTER_AUTH_SECRET: ci-only-secret-ci-only-secret-ci-only-secret
+          BETTER_AUTH_URL: http://127.0.0.1:3000
+          CORS_ORIGIN: http://127.0.0.1:3001
+          NODE_ENV: production
+          BUILD_SHA: ${{ github.sha }}
+          VITE_SERVER_URL: http://127.0.0.1:3000
+          APP_STORE_ENABLED: "false"
+          LLM_API_KEY: ci-placeholder
+        run: |
+          set -euo pipefail
+          artifact_root="$(mktemp -d /tmp/web-artifact.XXXXXX)"
+          cp -R apps/web/.output "${artifact_root}/.output"
+          bun apps/server/dist/index.mjs >/tmp/api.log 2>&1 &
+          api_pid=$!
+          HOST=127.0.0.1 PORT=3001 SERVER_URL=http://127.0.0.1:3000 \
+            bun "${artifact_root}/.output/server/index.mjs" >/tmp/web.log 2>&1 &
+          web_pid=$!
+          trap 'kill "${web_pid}" "${api_pid}" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:3000/readyz >/dev/null && \
+               curl --fail --silent http://127.0.0.1:3001/version.json >/dev/null; then
+              break
+            fi
+            if [ "${attempt}" -eq 30 ]; then
+              cat /tmp/api.log
+              cat /tmp/web.log
+              exit 1
+            fi
+            sleep 1
+          done
+          if ! WEB_BASE_URL=http://127.0.0.1:3001 EXPECTED_SHA=${{ github.sha }} EXPECT_INDEXING=${VITE_ENABLE_INDEXING} \
+            bash scripts/web-smoke.sh; then
+            cat /tmp/api.log
+            cat /tmp/web.log
+            exit 1
+          fi
+
+  build-push-deploy:
+    needs: verify
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    environment: production
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: "1.4.4"
+      - name: Resolve deployment defaults
+        run: |
+          set -euo pipefail
+          defaults="$(bun -e 'const h = await import("./packages/env/src/posthog-hosts.ts"); console.log(h.POSTHOG_BROWSER_PROXY_HOST + " " + h.POSTHOG_INGESTION_HOST)')"
+          read -r browser_default server_default <<< "${defaults}"
+          echo "VITE_POSTHOG_HOST=${VITE_POSTHOG_HOST:-${browser_default}}" >> "${GITHUB_ENV}"
+          echo "POSTHOG_HOST=${POSTHOG_HOST:-${server_default}}" >> "${GITHUB_ENV}"
+          echo "POSTHOG_BROWSER_DEFAULT=${browser_default}" >> "${GITHUB_ENV}"
+      - name: Resolve release metadata
+        id: release
+        run: echo "built_at=$(git show -s --format=%cI "${GITHUB_SHA}")" >> "${GITHUB_OUTPUT}"
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+      - name: Login GHCR
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.DOCKER_REGISTRY_USERNAME }}
+          password: ${{ secrets.DOCKER_REGISTRY_PASSWORD }}
+
+      - name: Build and push server image
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          file: apps/server/Dockerfile
+          platforms: ${{ env.PLATFORM }}
+          push: true
+          cache-from: type=gha,scope=server
+          cache-to: type=gha,mode=max,scope=server
+          build-args: |
+            BUILD_SHA=${{ github.sha }}
+            BUILD_TIME=${{ steps.release.outputs.built_at }}
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/northwind-server:${{ github.sha }}
+
+      - name: Build and push web image
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          file: apps/web/Dockerfile
+          platforms: ${{ env.PLATFORM }}
+          push: true
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,mode=max,scope=web
+          build-args: |
+            VITE_SERVER_URL=${{ secrets.VITE_SERVER_URL }}
+            VITE_BRAND_NAME=${{ env.VITE_BRAND_NAME }}
+            VITE_WEB_URL=${{ secrets.VITE_WEB_URL }}
+            VITE_ENABLE_INDEXING=${{ env.VITE_ENABLE_INDEXING }}
+            VITE_POSTHOG_PROJECT_TOKEN=${{ secrets.POSTHOG_PROJECT_TOKEN }}
+            VITE_POSTHOG_HOST=${{ env.VITE_POSTHOG_HOST }}
+            BUILD_SHA=${{ github.sha }}
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/northwind-web:${{ github.sha }}
+
+      - name: Build and push backup runtime
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          file: apps/backup/Dockerfile
+          platforms: ${{ env.PLATFORM }}
+          push: true
+          cache-from: type=gha,scope=backup
+          cache-to: type=gha,mode=max,scope=backup
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/northwind-backup:${{ github.sha }}
+
+      - name: Pin Dokploy applications to Git SHA
+        env:
+          DOKPLOY_URL: ${{ secrets.DOKPLOY_URL }}
+          DOKPLOY_API_KEY: ${{ secrets.DOKPLOY_API_KEY }}
+          DOKPLOY_MIGRATION_APPLICATION_ID: ${{ secrets.DOKPLOY_MIGRATION_APPLICATION_ID }}
+          DOKPLOY_SERVER_APPLICATION_ID: ${{ secrets.DOKPLOY_SERVER_APPLICATION_ID }}
+          DOKPLOY_WEB_APPLICATION_ID: ${{ secrets.DOKPLOY_WEB_APPLICATION_ID }}
+          DOKPLOY_WORKER_APPLICATION_ID: ${{ secrets.DOKPLOY_WORKER_APPLICATION_ID }}
+          REGISTRY_USER: ${{ secrets.DOCKER_REGISTRY_USERNAME }}
+          REGISTRY_PASSWORD: ${{ secrets.DOCKER_REGISTRY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          server_image="${REGISTRY}/${IMAGE_NAMESPACE}/northwind-server:${GITHUB_SHA}"
+          web_image="${REGISTRY}/${IMAGE_NAMESPACE}/northwind-web:${GITHUB_SHA}"
+          save_image() {
+            local app_id="$1"
+            local image="$2"
+            local payload
+            payload="$(jq -cn \
+              --arg applicationId "${app_id}" \
+              --arg dockerImage "${image}" \
+              --arg username "${REGISTRY_USER}" \
+              --arg password "${REGISTRY_PASSWORD}" \
+              --arg registryUrl "${REGISTRY}" \
+              '{json:{applicationId:$applicationId,dockerImage:$dockerImage,username:$username,password:$password,registryUrl:$registryUrl}}')"
+            curl --fail-with-body --silent --show-error -X POST "${DOKPLOY_URL}/api/trpc/application.saveDockerProvider" \
+              -H "x-api-key: ${DOKPLOY_API_KEY}" \
+              -H "Content-Type: application/json" \
+              -d "${payload}" >/dev/null
+          }
+          save_image "${DOKPLOY_MIGRATION_APPLICATION_ID}" "${server_image}"
+          save_image "${DOKPLOY_SERVER_APPLICATION_ID}" "${server_image}"
+          if [ -n "${DOKPLOY_WORKER_APPLICATION_ID:-}" ]; then
+            save_image "${DOKPLOY_WORKER_APPLICATION_ID}" "${server_image}"
+          fi
+          save_image "${DOKPLOY_WEB_APPLICATION_ID}" "${web_image}"
+
+      - name: Deploy migration, server, web, and worker in order
+        env:
+          DOKPLOY_URL: ${{ secrets.DOKPLOY_URL }}
+          DOKPLOY_API_KEY: ${{ secrets.DOKPLOY_API_KEY }}
+          DOKPLOY_MIGRATION_APPLICATION_ID: ${{ secrets.DOKPLOY_MIGRATION_APPLICATION_ID }}
+          DOKPLOY_SERVER_APPLICATION_ID: ${{ secrets.DOKPLOY_SERVER_APPLICATION_ID }}
+          DOKPLOY_WEB_APPLICATION_ID: ${{ secrets.DOKPLOY_WEB_APPLICATION_ID }}
+          DOKPLOY_WORKER_APPLICATION_ID: ${{ secrets.DOKPLOY_WORKER_APPLICATION_ID }}
+          API_URL: ${{ secrets.VITE_SERVER_URL }}
+          WEB_URL: ${{ secrets.VITE_WEB_URL }}
+        run: |
+          set -euo pipefail
+          deployment_title() {
+            local name="$1"
+            printf '%s %s run %s.%s' "${name}" "${GITHUB_SHA}" "${GITHUB_RUN_ID}" "${GITHUB_RUN_ATTEMPT}"
+          }
+          deploy() {
+            local app_id="$1"
+            local name="$2"
+            local title payload
+            title="$(deployment_title "${name}")"
+            payload="$(jq -cn \
+              --arg applicationId "${app_id}" \
+              --arg title "${title}" \
+              --arg description "immutable release ${GITHUB_SHA} from GitHub Actions run ${GITHUB_RUN_ID}.${GITHUB_RUN_ATTEMPT}" \
+              '{json:{applicationId:$applicationId,title:$title,description:$description}}')"
+            echo "Deploying ${title}"
+            curl --fail-with-body --silent --show-error -X POST "${DOKPLOY_URL}/api/trpc/application.deploy" \
+              -H "x-api-key: ${DOKPLOY_API_KEY}" \
+              -H "Content-Type: application/json" \
+              -d "${payload}" >/dev/null
+          }
+          wait_deployment() {
+            local app_id="$1"
+            local name="$2"
+            local title application_input response status
+            title="$(deployment_title "${name}")"
+            application_input="$(jq -rn --arg id "${app_id}" \
+              '{json:{applicationId:$id}} | tojson | @uri')"
+            for attempt in $(seq 1 120); do
+              response="$(curl --fail --silent --show-error --max-time 10 \
+                -H "x-api-key: ${DOKPLOY_API_KEY}" \
+                "${DOKPLOY_URL}/api/trpc/deployment.all?input=${application_input}" 2>/dev/null || true)"
+              status="$(printf '%s' "${response}" | jq -r --arg title "${title}" \
+                '.result.data.json | map(select(.title == $title)) | first | .status // empty' 2>/dev/null || true)"
+              case "${status}" in
+                done)
+                  echo "${name} deployment completed"
+                  return 0
+                  ;;
+                error)
+                  echo "${name} deployment failed in Dokploy"
+                  return 1
+                  ;;
+              esac
+              if [ $((attempt % 12)) -eq 0 ]; then
+                echo "${name} deployment attempt ${attempt}: status=${status:-not-visible}"
+              fi
+              sleep 5
+            done
+            echo "${name} deployment did not finish in Dokploy"
+            return 1
+          }
+          wait_http() {
+            local url="$1"
+            local name="$2"
+            for attempt in $(seq 1 36); do
+              if curl --fail --silent --show-error --max-time 10 "${url}" >/dev/null; then
+                echo "${name} is ready"
+                return 0
+              fi
+              sleep 5
+            done
+            echo "${name} did not become ready"
+            return 1
+          }
+          wait_sha() {
+            local url="$1"
+            local name="$2"
+            local max_attempts="${3:-60}"
+            local payload http_code observed_sha status observed_build_sha
+            for attempt in $(seq 1 "${max_attempts}"); do
+              payload="$(curl --fail --silent --show-error --max-time 10 -w '\n%{http_code}' "${url}" 2>/dev/null || true)"
+              http_code="$(printf '%s' "${payload}" | tail -n1)"
+              payload="$(printf '%s' "${payload}" | sed '$d')"
+              observed_sha="$(printf '%s' "${payload}" | jq -r '.sha // empty' 2>/dev/null || true)"
+              if [ "${observed_sha}" = "${GITHUB_SHA}" ]; then
+                echo "${name} completed at ${GITHUB_SHA}"
+                return 0
+              fi
+              status="$(printf '%s' "${payload}" | jq -r '.status // empty' 2>/dev/null || true)"
+              observed_build_sha="$(printf '%s' "${payload}" | jq -r '.buildSha // empty' 2>/dev/null || true)"
+              if [ "${status}" = "failed" ] && [ "${observed_build_sha}" = "${GITHUB_SHA}" ]; then
+                echo "${name} failed; migration log:"
+                printf '%s' "${payload}" | jq -r '.log // "no log"' | tail -40
+                return 1
+              fi
+              if [ $((attempt % 12)) -eq 0 ]; then
+                echo "${name} attempt ${attempt}: http=${http_code:-none} sha=${observed_sha:-none} buildSha=${observed_build_sha:-none} body=$(printf '%s' "${payload}" | head -c 200)"
+              fi
+              sleep 5
+            done
+            echo "${name} did not complete at ${GITHUB_SHA}"
+            return 1
+          }
+          reconcile_web_domain_port() {
+            local web_host application_input response domain current_port payload
+            web_host="$(printf '%s' "${WEB_URL}" | sed -E 's#^https?://([^/]+).*$#\1#')"
+            application_input="$(jq -rn --arg id "${DOKPLOY_WEB_APPLICATION_ID}" \
+              '{json:{applicationId:$id}} | tojson | @uri')"
+            response="$(curl --fail-with-body --silent --show-error \
+              -H "x-api-key: ${DOKPLOY_API_KEY}" \
+              "${DOKPLOY_URL}/api/trpc/application.one?input=${application_input}")"
+            domain="$(printf '%s' "${response}" | jq -c --arg host "${web_host}" \
+              '.result.data.json.domains | map(select(.host == $host and (.path // "/") == "/")) | first // empty')"
+            if [ -z "${domain}" ]; then
+              payload="$(jq -cn \
+                --arg host "${web_host}" \
+                --arg applicationId "${DOKPLOY_WEB_APPLICATION_ID}" \
+                '{json:{host:$host,path:"/",port:3001,https:true,certificateType:"letsencrypt",domainType:"application",applicationId:$applicationId}}')"
+              curl --fail-with-body --silent --show-error -X POST \
+                "${DOKPLOY_URL}/api/trpc/domain.create" \
+                -H "x-api-key: ${DOKPLOY_API_KEY}" \
+                -H "Content-Type: application/json" \
+                -d "${payload}" >/dev/null
+              echo "Created ${web_host} on web port 3001"
+              return
+            fi
+            current_port="$(printf '%s' "${domain}" | jq -r '.port // empty')"
+            if [ "${current_port}" = "3001" ]; then
+              echo "${web_host} already targets web port 3001"
+              return
+            fi
+            payload="$(printf '%s' "${domain}" | jq -c \
+              '{json:{domainId:.domainId,host:.host,path:(.path // "/"),port:3001,https:(.https // true),certificateType:(.certificateType // "letsencrypt"),domainType:(.domainType // "application")}}')"
+            curl --fail-with-body --silent --show-error -X POST \
+              "${DOKPLOY_URL}/api/trpc/domain.update" \
+              -H "x-api-key: ${DOKPLOY_API_KEY}" \
+              -H "Content-Type: application/json" \
+              -d "${payload}" >/dev/null
+            echo "Updated ${web_host} from port ${current_port:-unset} to 3001"
+          }
+          deploy "${DOKPLOY_MIGRATION_APPLICATION_ID}" "migration"
+          wait_deployment "${DOKPLOY_MIGRATION_APPLICATION_ID}" "migration"
+          wait_sha "${API_URL}/internal/migration-ready" "migration" 180
+          deploy "${DOKPLOY_SERVER_APPLICATION_ID}" "server"
+          wait_deployment "${DOKPLOY_SERVER_APPLICATION_ID}" "server"
+          wait_http "${API_URL}/readyz" "server"
+          # Dokploy 部署是异步的：/readyz 可能仍由旧容器响应，必须轮询 /version
+          # 直到返回目标 SHA（一次性 test 会在切换窗口误判失败）。
+          wait_sha "${API_URL}/version" "server"
+          deploy "${DOKPLOY_WEB_APPLICATION_ID}" "web"
+          # First SSR cutover may briefly overlap the old port-80 SPA. Reconcile the
+          # existing domain idempotently immediately after starting the new deploy.
+          reconcile_web_domain_port
+          wait_deployment "${DOKPLOY_WEB_APPLICATION_ID}" "web"
+          wait_sha "${WEB_URL}/version.json" "web"
+          # Products without a background worker provision no worker application.
+          if [ -n "${DOKPLOY_WORKER_APPLICATION_ID:-}" ]; then
+            deploy "${DOKPLOY_WORKER_APPLICATION_ID}" "worker"
+            wait_deployment "${DOKPLOY_WORKER_APPLICATION_ID}" "worker"
+          fi
+
+      - name: Production smoke test
+        env:
+          BASE_URL: ${{ secrets.VITE_SERVER_URL }}
+          WEB_BASE_URL: ${{ secrets.VITE_WEB_URL }}
+          EXPECTED_SHA: ${{ github.sha }}
+          EXPECT_INDEXING: ${{ env.VITE_ENABLE_INDEXING }}
+          EXPECT_BILLING_CONFIGURED: ${{ contains(format(',{0},', env.REQUIRED_INTEGRATIONS), ',stripe,') && '1' || '' }}
+          EXPECT_BILLING_LIVE: ${{ contains(format(',{0},', env.REQUIRED_INTEGRATIONS), ',stripe,') && (env.DEPLOY_STAGE == 'production' && '1' || '0') || '' }}
+          EXPECT_ANALYTICS_CONFIGURED: ${{ secrets.POSTHOG_PROJECT_TOKEN != '' && '1' || '0' }}
+          EXPECT_SERVER_ANALYTICS_HOST: ${{ env.POSTHOG_HOST }}
+          EXPECT_BROWSER_ANALYTICS_HOST: ${{ env.VITE_POSTHOG_HOST }}
+          EXPECT_ANALYTICS_PROJECT_TOKEN: ${{ secrets.POSTHOG_PROJECT_TOKEN }}
+        run: |
+          bash scripts/api-smoke.sh
+          bash scripts/web-smoke.sh

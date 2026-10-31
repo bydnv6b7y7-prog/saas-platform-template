@@ -1,0 +1,134 @@
+name: CI
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    services:
+      iap-postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: iap_test
+          POSTGRES_PASSWORD: iap_test_local_only
+          POSTGRES_DB: iap_test
+        ports:
+          - 56432:5432
+        options: >-
+          --health-cmd "pg_isready -U iap_test -d iap_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: "1.4.4"
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Validate release files
+        run: |
+          docker compose config >/dev/null
+          bash -n \
+            scripts/api-smoke.sh \
+            scripts/backup-postgres.sh \
+            scripts/deploy-production.sh \
+            scripts/restore-verify.sh \
+            scripts/web-smoke.sh
+      - name: Type check
+        run: bun run check-types
+        env:
+          SKIP_ENV_VALIDATION: "1"
+          VITE_SERVER_URL: http://localhost:3000
+          VITE_WEB_URL: http://localhost:3001
+          VITE_ENABLE_INDEXING: "false"
+      - name: Unit tests
+        run: bun run test
+        env:
+          SKIP_ENV_VALIDATION: "1"
+      - name: App Store PostgreSQL integration tests
+        run: bun test packages/db/src/iap.integration.test.ts
+        env:
+          IAP_TEST_DATABASE_URL: postgresql://iap_test:iap_test_local_only@127.0.0.1:56432/iap_test
+      - name: Email OTP PostgreSQL integration tests
+        run: |
+          bun -e 'const url = new URL(process.env.EMAIL_OTP_TEST_DATABASE_URL); url.pathname = "/postgres"; const db = new Bun.SQL(url.href); await db.unsafe("CREATE DATABASE email_otp_test"); await db.close();'
+          bun test packages/auth/src/email-otp.postgres.test.ts
+        env:
+          SKIP_ENV_VALIDATION: "1"
+          EMAIL_OTP_TEST_DATABASE_URL: postgresql://iap_test:iap_test_local_only@127.0.0.1:56432/email_otp_test
+      - name: Admin users PostgreSQL integration tests
+        run: |
+          bun -e 'const url = new URL(process.env.ADMIN_USERS_TEST_DATABASE_URL); url.pathname = "/postgres"; const db = new Bun.SQL(url.href); await db.unsafe("CREATE DATABASE northwind_admin_users_test"); await db.close();'
+          bun test packages/auth/src/admin-users.postgres.test.ts
+        env:
+          SKIP_ENV_VALIDATION: "1"
+          ADMIN_USERS_TEST_DATABASE_URL: postgresql://iap_test:iap_test_local_only@127.0.0.1:56432/northwind_admin_users_test
+      - name: Production build
+        run: bun run build
+        env:
+          SKIP_ENV_VALIDATION: "1"
+          VITE_SERVER_URL: http://127.0.0.1:3000
+          VITE_BRAND_NAME: Northwind
+          VITE_WEB_URL: http://127.0.0.1:3001
+          VITE_ENABLE_INDEXING: "false"
+      - name: Web SSR smoke
+        run: |
+          set -euo pipefail
+          artifact_root="$(mktemp -d /tmp/web-artifact.XXXXXX)"
+          cp -R apps/web/.output "${artifact_root}/.output"
+          HOST=127.0.0.1 PORT=3001 BUILD_SHA=ci SERVER_URL=http://127.0.0.1:3000 \
+            bun "${artifact_root}/.output/server/index.mjs" >/tmp/web-ssr.log 2>&1 &
+          web_pid=$!
+          trap 'kill "${web_pid}" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:3001/version.json >/dev/null; then
+              break
+            fi
+            if [ "${attempt}" -eq 30 ]; then
+              cat /tmp/web-ssr.log
+              exit 1
+            fi
+            sleep 1
+          done
+          if ! WEB_BASE_URL=http://127.0.0.1:3001 EXPECTED_SHA=ci EXPECT_INDEXING=0 \
+            bash scripts/web-smoke.sh; then
+            cat /tmp/web-ssr.log
+            exit 1
+          fi
+
+  e2e:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: "1.4.4"
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Install Chromium
+        run: bunx playwright install --with-deps chromium
+      - name: Golden path on production builds (PostgreSQL, Mailpit, S3 and a mock model)
+        run: bun run e2e
+      - name: Show end-to-end report and logs
+        if: always()
+        run: |
+          cat .tmp/e2e/report.json 2>/dev/null || true
+          tail -n 50 .tmp/e2e/*.log 2>/dev/null || true

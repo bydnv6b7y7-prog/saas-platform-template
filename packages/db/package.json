@@ -1,0 +1,49 @@
+{
+  "name": "@northwind/db",
+  "type": "module",
+  "exports": {
+    ".": {
+      "default": "./src/index.ts"
+    },
+    "./schema/auth": {
+      "default": "./src/schema/auth.ts"
+    },
+    "./schema/iap": {
+      "default": "./src/schema/iap.ts"
+    },
+    "./schema/runtime-settings": {
+      "default": "./src/schema/runtime-settings.ts"
+    },
+    "./schema/app-feedback": {
+      "default": "./src/schema/app-feedback.ts"
+    },
+    "./schema/usage": {
+      "default": "./src/schema/usage.ts"
+    },
+    "./testing": {
+      "default": "./src/testing.ts"
+    }
+  },
+  "scripts": {
+    "check-types": "tsc --noEmit",
+    "test": "bun test src",
+    "db:push": "drizzle-kit push",
+    "db:generate": "drizzle-kit generate",
+    "db:studio": "drizzle-kit studio",
+    "db:migrate": "bun run scripts/migrate-production.ts && cd ../product && bun run db:post-migrate",
+    "db:migrate:production": "bun run db:migrate"
+  },
+  "dependencies": {
+    "@northwind/better-auth-app-store": "workspace:*",
+    "@northwind/env": "workspace:*",
+    "dotenv": "catalog:",
+    "drizzle-orm": "catalog:",
+    "pg": "^8.23.1"
+  },
+  "devDependencies": {
+    "@northwind/config": "workspace:*",
+    "@types/pg": "^8.23.1",
+    "drizzle-kit": "^0.31.11",
+    "typescript": "catalog:"
+  }
+}

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+  <title id="title">Northwind</title>
+  <g fill="#0066CC">
+    <rect x="6" y="43" width="10" height="10" rx="2.5"/>
+    <rect x="25" y="27" width="14" height="14" rx="3.5"/>
+    <rect x="44" y="8" width="16" height="16" rx="4"/>
+  </g>
+</svg>

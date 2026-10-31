@@ -1,0 +1,60 @@
+{
+  "name": "@northwind/api",
+  "type": "module",
+  "exports": {
+    ".": {
+      "default": "./src/index.ts"
+    },
+    "./app-client-config": {
+      "default": "./src/app-client-config.ts"
+    },
+    "./app-feedback": {
+      "default": "./src/app-feedback.ts"
+    },
+    "./feedback-screenshots": {
+      "default": "./src/feedback-screenshots.ts"
+    },
+    "./app-store-admin": {
+      "default": "./src/app-store-admin.ts"
+    },
+    "./context": {
+      "default": "./src/context.ts"
+    },
+    "./operational-settings": {
+      "default": "./src/operational-settings.ts"
+    },
+    "./settings-store": {
+      "default": "./src/settings-store.ts"
+    },
+    "./routers/settings": {
+      "default": "./src/routers/settings.ts"
+    },
+    "./routers/index": {
+      "default": "./src/routers/index.ts"
+    },
+    "./usage": {
+      "default": "./src/usage.ts"
+    },
+    "./assistant": {
+      "default": "./src/assistant.ts"
+    }
+  },
+  "scripts": {
+    "check-types": "tsc --noEmit",
+    "test": "SKIP_ENV_VALIDATION=1 bun test src"
+  },
+  "dependencies": {
+    "@northwind/auth": "workspace:*",
+    "@northwind/better-auth-app-store": "workspace:*",
+    "@northwind/db": "workspace:*",
+    "@northwind/env": "workspace:*",
+    "@trpc/server": "catalog:",
+    "aws4fetch": "^1.0.20",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@northwind/config": "workspace:*",
+    "hono": "catalog:",
+    "typescript": "catalog:"
+  }
+}

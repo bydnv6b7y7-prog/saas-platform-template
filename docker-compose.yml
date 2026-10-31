@@ -1,0 +1,151 @@
+name: northwind
+
+x-default-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        VITE_SERVER_URL: http://localhost:3000
+        VITE_BRAND_NAME: Northwind
+        VITE_WEB_URL: http://localhost:3001
+        VITE_ENABLE_INDEXING: "false"
+        VITE_POSTHOG_PROJECT_TOKEN: ${POSTHOG_PROJECT_TOKEN:-}
+        VITE_POSTHOG_HOST: ${VITE_POSTHOG_HOST:-}
+        BUILD_SHA: development
+    init: true
+    ports:
+      - "3001:3001"
+    env_file:
+      - path: apps/web/.env
+        required: false
+    environment:
+      BUILD_SHA: development
+      HOST: 0.0.0.0
+      PORT: "3001"
+      SERVER_URL: http://server:3000
+      ANALYTICS_PRIVACY_MODE: ${ANALYTICS_PRIVACY_MODE:-opt_in}
+      ANALYTICS_OPT_IN_COUNTRIES: ${ANALYTICS_OPT_IN_COUNTRIES:-}
+    depends_on:
+      server:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "bun",
+          "-e",
+          "fetch('http://127.0.0.1:3001/version.json').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+    stop_grace_period: 30s
+    logging: *default-logging
+
+  server:
+    build:
+      context: .
+      dockerfile: apps/server/Dockerfile
+    init: true
+    ports:
+      - "3000:3000"
+    env_file:
+      - path: apps/server/.env
+        required: false
+    environment:
+      CORS_ORIGIN: http://localhost:3001
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-password}@postgres:5432/northwind
+      APP_PROCESS_NAME: api
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:3000/readyz').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    stop_grace_period: 30s
+    logging: *default-logging
+
+  postgres:
+    image: postgres:18
+    container_name: northwind-postgres
+    environment:
+      POSTGRES_DB: northwind
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - northwind_postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    logging: *default-logging
+
+  # Development inbox: the API delivers every email here when EMAIL_DEV_MAILPIT_URL is set
+  # (open http://localhost:8025 to read sign-up codes). Never part of a production deployment.
+  mailpit:
+    image: axllent/mailpit:v1.27.1
+    ports:
+      - "${MAILPIT_PORT:-8025}:8025"
+    restart: unless-stopped
+    logging: *default-logging
+
+  # S3-compatible stand-in for Cloudflare R2 in local end-to-end tests (`docker compose --profile e2e up -d s3`).
+  # Signatures are checked like R2's: access key e2e-access-key, secret e2e-secret-key (test/e2e/s3.json).
+  s3:
+    image: chrislusf/seaweedfs:3.97
+    profiles: ["e2e"]
+    command: ["server", "-s3", "-s3.port=8333", "-s3.config=/etc/seaweedfs/s3.json", "-dir=/data", "-volume.max=5"]
+    volumes:
+      - ./test/e2e/s3.json:/etc/seaweedfs/s3.json:ro
+    ports:
+      - "${S3_PORT:-8333}:8333"
+    logging: *default-logging
+
+  migrate:
+    build:
+      context: .
+      dockerfile: apps/server/Dockerfile
+    env_file:
+      - path: apps/server/.env
+        required: false
+    environment:
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-password}@postgres:5432/northwind
+      APP_PROCESS_NAME: migration
+    command:
+      [
+        "sh",
+        "-c",
+        "cd /app/packages/db && bun run db:migrate:production && cd /app/apps/server && bun run mastra:migrate",
+      ]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+volumes:
+  northwind_postgres_data:

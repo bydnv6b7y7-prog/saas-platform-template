@@ -1,0 +1,4 @@
+[test]
+# TypeScript build output can contain compiled copies of source tests.
+pathIgnorePatterns = ["**/dist/**"]
+preload = ["./test/setup-env.ts"]
