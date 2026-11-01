@@ -90,6 +90,14 @@ try {
     const client = new AwsClient({ ...s3, service: "s3" });
     const bucket = await client.fetch(`${s3Url}/${s3.bucket}`, { method: "PUT" });
     if (![200, 409].includes(bucket.status)) throw new Error(`could not create bucket (${bucket.status})`);
+    // A fresh SeaweedFS accepts the bucket before its volume servers can take writes.
+    for (let attempt = 0; ; attempt++) {
+      const probe = await client.fetch(`${s3Url}/${s3.bucket}/e2e-probe`, { method: "PUT", body: "probe" }).catch(() => null);
+      if (probe?.ok) break;
+      if (attempt > 60) throw new Error(`object storage does not accept writes (${probe?.status ?? "no response"})`);
+      await Bun.sleep(1_000);
+    }
+    await client.fetch(`${s3Url}/${s3.bucket}/e2e-probe`, { method: "DELETE" });
   });
 
   await phase("create a fresh database and run migrations", async () => {
