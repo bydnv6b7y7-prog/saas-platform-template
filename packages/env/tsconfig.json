@@ -1,0 +1,3 @@
+{
+  "extends": "@northwind/config/tsconfig.base.json"
+}

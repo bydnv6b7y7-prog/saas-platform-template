@@ -1,0 +1,36 @@
+**/node_modules
+.git
+
+**/dist
+**/build
+**/.next
+**/.nuxt
+**/.output
+**/.svelte-kit
+**/.astro
+**/.turbo
+.turbo
+
+**/.wrangler
+**/.alchemy
+**/.expo
+**/.vercel
+*.log
+
+Dockerfile
+**/Dockerfile
+docker-compose.yml
+
+# Secrets stay out of image layers; runtime env comes from compose env_file,
+# build-time public values come from compose build args
+**/.env
+**/.env.*
+!**/.env.example
+
+# Local captures and generated artifacts must never enter an image layer.
+**/data
+.tmp
+tmp
+temp
+output
+.playwright-cli

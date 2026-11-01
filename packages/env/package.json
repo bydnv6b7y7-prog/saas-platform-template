@@ -1,0 +1,37 @@
+{
+  "name": "@northwind/env",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./analytics-privacy": "./src/analytics-privacy.ts",
+    "./app-client-config": "./src/app-client-config.ts",
+    "./app-store": "./src/app-store.ts",
+    "./app-store-deployment": "./src/app-store-deployment.ts",
+    "./apple-application": "./src/apple-application.ts",
+    "./copilot": "./src/copilot.ts",
+    "./email": "./src/email.ts",
+    "./operational-settings": "./src/operational-settings.ts",
+    "./feedback-storage": "./src/feedback-storage.ts",
+    "./posthog": "./src/posthog.ts",
+    "./platform-server-schema": "./src/platform-server-schema.ts",
+    "./platform-web-schema": "./src/platform-web-schema.ts",
+    "./server": "./src/server.ts",
+    "./stripe": "./src/stripe.ts",
+    "./web": "./src/web.ts"
+  },
+  "scripts": {
+    "check-types": "tsc --noEmit",
+    "test": "bun test src"
+  },
+  "dependencies": {
+    "@t3-oss/env-core": "^0.13.11",
+    "dotenv": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@northwind/config": "workspace:*",
+    "@types/bun": "catalog:",
+    "typescript": "catalog:"
+  }
+}

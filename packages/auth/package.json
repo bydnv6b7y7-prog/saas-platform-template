@@ -1,0 +1,43 @@
+{
+  "name": "@northwind/auth",
+  "type": "module",
+  "exports": {
+    ".": {
+      "default": "./src/index.ts"
+    },
+    "./admin": {
+      "default": "./src/admin.ts"
+    },
+    "./admin-user-contract": {
+      "default": "./src/admin-user-contract.ts"
+    },
+    "./account-deletion": {
+      "default": "./src/account-deletion.ts"
+    },
+    "./app-store": {
+      "default": "./src/app-store-billing.ts"
+    }
+  },
+  "scripts": {
+    "check-types": "tsc --noEmit",
+    "test": "SKIP_ENV_VALIDATION=1 bun test src"
+  },
+  "dependencies": {
+    "@northwind/better-auth-app-store": "workspace:*",
+    "@northwind/analytics": "workspace:*",
+    "@northwind/billing": "workspace:*",
+    "@northwind/db": "workspace:*",
+    "@northwind/env": "workspace:*",
+    "@better-auth/stripe": "catalog:",
+    "better-auth": "catalog:",
+    "drizzle-orm": "catalog:",
+    "jose": "catalog:",
+    "posthog-node": "^5.61.1",
+    "stripe": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@northwind/config": "workspace:*",
+    "typescript": "catalog:"
+  }
+}

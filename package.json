@@ -1,0 +1,79 @@
+{
+  "name": "northwind",
+  "private": true,
+  "workspaces": {
+    "packages": [
+      "apps/*",
+      "packages/*"
+    ],
+    "catalog": {
+      "dotenv": "^18.0.9",
+      "zod": "^4.6.7",
+      "typescript": "^7.0.2",
+      "@types/bun": "^1.4.4",
+      "hono": "^4.13.14",
+      "@trpc/server": "^11.22.1",
+      "better-auth": "1.7.14",
+      "@better-auth/stripe": "1.7.14",
+      "stripe": "23.1.0",
+      "drizzle-orm": "^0.45.4",
+      "jose": "^6.2.14",
+      "lucide-react": "^1.66.0",
+      "next-themes": "^0.4.6",
+      "react": "^19.3.1",
+      "react-dom": "^19.3.1",
+      "sonner": "^2.0.8",
+      "@trpc/client": "^11.22.1",
+      "@types/react": "^19.3.0",
+      "@types/react-dom": "^19.3.0",
+      "tailwindcss": "^4.3.3"
+    }
+  },
+  "type": "module",
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "check-types": "bun run check:boundaries && turbo run check-types && tsc --noEmit -p scripts",
+    "check:boundaries": "bun run scripts/check-platform-boundaries.ts",
+    "test": "SKIP_ENV_VALIDATION=1 turbo run test && bun test scripts",
+    "deploy:production": "bash scripts/deploy-production.sh",
+    "smoke": "bash scripts/api-smoke.sh",
+    "smoke:web": "bash scripts/web-smoke.sh",
+    "dev:web": "turbo run dev -F web",
+    "dev:server": "turbo run dev -F server",
+    "dev:kill": "bun run scripts/kill-dev-ports.ts",
+    "dev:stripe": "stripe listen --events checkout.session.completed,customer.subscription.created,customer.subscription.updated,customer.subscription.deleted --forward-to http://localhost:3000/api/auth/stripe/webhook",
+    "admin:lookup": "cd apps/server && bun run admin:lookup",
+    "admin:app-store": "cd apps/server && bun run admin:app-store",
+    "db:push": "turbo run db:push -F @northwind/db",
+    "db:studio": "turbo run db:studio -F @northwind/db",
+    "db:generate": "turbo run db:generate -F @northwind/db",
+    "db:migrate": "turbo run db:migrate -F @northwind/db && cd apps/server && bun run mastra:migrate",
+    "db:start": "docker compose up -d postgres mailpit",
+    "db:watch": "docker compose up postgres",
+    "db:stop": "docker compose stop postgres",
+    "db:down": "docker compose down postgres",
+    "docker:build": "docker compose build",
+    "docker:up": "docker compose up -d --build",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f",
+    "deploy:provision": "bun run scripts/dokploy-provision.ts",
+    "deploy:github": "bun run scripts/deploy-github.ts",
+    "doctor": "bun run scripts/doctor.ts",
+    "e2e": "bun run scripts/e2e.ts"
+  },
+  "dependencies": {
+    "@northwind/env": "workspace:*",
+    "@northwind/product": "workspace:*",
+    "dotenv": "catalog:"
+  },
+  "devDependencies": {
+    "@northwind/config": "workspace:*",
+    "@types/bun": "catalog:",
+    "aws4fetch": "^1.0.20",
+    "playwright": "1.64.1",
+    "turbo": "^2.11.10",
+    "typescript": "catalog:"
+  },
+  "packageManager": "bun@1.4.4"
+}
