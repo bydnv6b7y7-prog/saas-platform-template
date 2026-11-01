@@ -20,13 +20,12 @@ Analytics failures never fail authentication, billing projection, or Stripe webh
 
 ## Event contract
 
-The shared type contract lives in `packages/analytics/src/index.ts`.
+The shared type contract lives in `packages/analytics/src/index.ts`. A product adds its own events by declaration merging into `ProductAnalyticsEvents` from its own code (`apps/web/src/product/analytics.ts`), so they are typed like platform events without the platform naming them.
 
 | Event | Owner | Important properties |
 | --- | --- | --- |
 | `user_signed_up` | Auth server | `auth_method` |
 | `assistant_opened` | Web | `source`, sanitized `path` |
-| `app_store_link_clicked` | Web | public App Store ID and ranking scope |
 | `billing_interval_selected` | Web | `billing_interval` |
 | `billing_checkout_started` | Web | plan, interval, USD amount in cents |
 | `billing_checkout_failed` | Web | bounded failure category; never a raw error message |

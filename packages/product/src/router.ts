@@ -2,6 +2,8 @@ import { protectedProcedure, publicProcedure, router } from "@northwind/api";
 import { platformConfigRouters, platformRouters } from "@northwind/api/routers/index";
 import { z } from "zod";
 
+import { notesRouter } from "./routers/notes";
+
 /** Example product procedures; replace with your own routers. */
 const exampleRouter = router({
   hello: publicProcedure
@@ -15,5 +17,6 @@ export const appRouter = router({
   ...platformRouters,
   config: router({ ...platformConfigRouters }),
   example: exampleRouter,
+  notes: notesRouter,
 });
 export type AppRouter = typeof appRouter;

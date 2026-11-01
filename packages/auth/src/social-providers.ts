@@ -4,11 +4,11 @@ import { createPrivateKey } from "node:crypto";
 
 const socialProviderIds = ["google", "github", "apple"] as const;
 
-export type SocialProviderId = (typeof socialProviderIds)[number];
+type SocialProviderId = (typeof socialProviderIds)[number];
 
 type SocialProviders = NonNullable<BetterAuthOptions["socialProviders"]>;
 
-export type SocialProviderEnvironment = {
+type SocialProviderEnvironment = {
   googleClientId?: string;
   googleIosClientId?: string;
   googleClientSecret?: string;

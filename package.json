@@ -36,6 +36,8 @@
     "check-types": "bun run check:boundaries && turbo run check-types && tsc --noEmit -p scripts",
     "check:boundaries": "bun run scripts/check-platform-boundaries.ts",
     "test": "SKIP_ENV_VALIDATION=1 turbo run test && bun test scripts",
+    "test:postgres": "bun scripts/test-postgres.ts",
+    "storage:cors": "bun scripts/storage-cors.ts",
     "deploy:production": "bash scripts/deploy-production.sh",
     "smoke": "bash scripts/api-smoke.sh",
     "smoke:web": "bash scripts/web-smoke.sh",
@@ -60,7 +62,9 @@
     "deploy:provision": "bun run scripts/dokploy-provision.ts",
     "deploy:github": "bun run scripts/deploy-github.ts",
     "doctor": "bun run scripts/doctor.ts",
-    "e2e": "bun run scripts/e2e.ts"
+    "e2e": "bun run scripts/e2e.ts",
+    "product": "cd apps/server && bun run product",
+    "check:unused": "bunx knip@5.88.1 --no-progress"
   },
   "dependencies": {
     "@northwind/env": "workspace:*",
@@ -71,6 +75,7 @@
     "@northwind/config": "workspace:*",
     "@types/bun": "catalog:",
     "aws4fetch": "^1.0.20",
+    "axe-core": "4.14.0",
     "playwright": "1.64.1",
     "turbo": "^2.11.10",
     "typescript": "catalog:"

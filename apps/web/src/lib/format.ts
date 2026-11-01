@@ -38,19 +38,6 @@ export function formatUtcDateTime(value: DateValue): string {
   return `${formatUtcDate(date)}, ${hours}:${minutes} UTC`;
 }
 
-/** formatUtcDateTime，空值用调用方语义的兜底文案（各页面的缺省提示不同）。 */
-export function formatUtcDateTimeOr(
-  value: DateValue | null | undefined,
-  fallback: string,
-): string {
-  return value ? formatUtcDateTime(value) : fallback;
-}
-
-/** 当前 UTC 日期 YYYY-MM-DD。 */
-export function utcToday(): string {
-  return new Date().toISOString().slice(0, 10);
-}
-
 const EN_US_NUMBER = new Intl.NumberFormat("en-US");
 
 export function formatEnUsNumber(value: number): string {

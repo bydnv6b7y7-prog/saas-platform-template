@@ -13,8 +13,6 @@ export type AccessSource = (typeof accessSources)[number];
 export const assistantUsageStatusSchema = z.object({
   plan: z.enum(assistantPlans),
   accessSource: z.enum(accessSources).default("free"),
-  // Kept for already-loaded clients during a rolling deploy. History is not an entitlement.
-  historyEnabled: z.boolean(),
   /** False while no model provider key is set; the assistant says so instead of failing silently. */
   configured: z.boolean().default(true),
   limits: z.object({

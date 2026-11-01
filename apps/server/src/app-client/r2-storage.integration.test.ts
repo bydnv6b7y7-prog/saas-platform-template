@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 
-import type { FeedbackScreenshotStorage } from "@northwind/api/feedback-screenshots";
+import type { ObjectStorage } from "@northwind/api/object-storage";
 
 // The real bucket, only when asked: APP_FEEDBACK_R2_TEST=1 with R2_* set
 // (docs/app-feedback-rating.md, failure modes 20–27). It writes a few small
@@ -9,13 +9,13 @@ import type { FeedbackScreenshotStorage } from "@northwind/api/feedback-screensh
 const enabled = process.env.APP_FEEDBACK_R2_TEST === "1";
 
 (enabled ? describe : describe.skip)("feedback screenshots in the real R2 bucket", () => {
-  let storage: FeedbackScreenshotStorage;
+  let storage: ObjectStorage;
   beforeAll(async () => {
-    const { resolveFeedbackStorageConfig } = await import("@northwind/env/feedback-storage");
-    const { createR2Storage } = await import("@northwind/api/feedback-screenshots");
-    const config = resolveFeedbackStorageConfig(process.env);
+    const { resolveObjectStorageConfig } = await import("@northwind/env/object-storage");
+    const { createObjectStorage } = await import("@northwind/api/object-storage");
+    const config = resolveObjectStorageConfig(process.env);
     if (!config.configured) throw new Error("APP_FEEDBACK_R2_TEST=1 needs R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET and R2_ENDPOINT");
-    storage = createR2Storage(config);
+    storage = createObjectStorage(config);
   });
   const keys: string[] = [];
   const key = () => {
@@ -39,7 +39,7 @@ const enabled = process.env.APP_FEEDBACK_R2_TEST === "1";
   test("an upload link takes exactly the signed type and length, for that one object", async () => {
     const target = key();
     const bytes = jpeg(2_048);
-    const ticket = await storage.presignUpload(target, bytes.length, 600);
+    const ticket = await storage.presignUpload(target, { contentType: "image/jpeg", byteLength: bytes.length }, 600);
     expect(new URL(ticket.url).searchParams.get("X-Amz-SignedHeaders")).toBe("content-length;content-type;host");
     expect(new URL(ticket.url).searchParams.get("X-Amz-Expires")).toBe("600");
     expect(ticket.url).not.toContain(process.env.R2_SECRET_ACCESS_KEY!);
@@ -57,7 +57,7 @@ const enabled = process.env.APP_FEEDBACK_R2_TEST === "1";
 
   test("an expired link is refused", async () => {
     const target = key();
-    const ticket = await storage.presignUpload(target, 16, 1);
+    const ticket = await storage.presignUpload(target, { contentType: "image/jpeg", byteLength: 16 }, 1);
     await Bun.sleep(2_100);
     expect(await put(ticket.url, jpeg(16), ticket.headers)).toBe(403);
     expect(await storage.head(target)).toBeNull();
@@ -65,7 +65,7 @@ const enabled = process.env.APP_FEEDBACK_R2_TEST === "1";
 
   test("a view link shows the object; deleting is final and repeatable", async () => {
     const target = key();
-    const ticket = await storage.presignUpload(target, 512, 600);
+    const ticket = await storage.presignUpload(target, { contentType: "image/jpeg", byteLength: 512 }, 600);
     expect(await put(ticket.url, jpeg(512), ticket.headers)).toBe(200);
     const view = await fetch(await storage.presignDownload(target, 600));
     expect(view.status).toBe(200);

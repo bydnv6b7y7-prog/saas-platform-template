@@ -23,10 +23,10 @@
 | --- | --- | --- |
 | 邮件（生产） | `CLOUDFLARE_ACCOUNT_ID`、`CLOUDFLARE_EMAIL_API_TOKEN`、`EMAIL_FROM` | [邮箱验证](./email-verification.md) |
 | Stripe 订阅 | `STRIPE_SECRET_KEY`、`STRIPE_WEBHOOK_SECRET`、`STRIPE_PRICE_PRO_MONTHLY`、`STRIPE_PRICE_PRO_YEARLY` | [订阅](./subscriptions.md)；本地 `bun run dev:stripe` 转发 webhook |
-| R2 截图 | `R2_ENDPOINT`、`R2_BUCKET`、`R2_ACCESS_KEY_ID`、`R2_SECRET_ACCESS_KEY`（`R2_REGION`） | [反馈与评分](./app-feedback-rating.md) |
+| 对象存储（R2） | `R2_ENDPOINT`、`R2_BUCKET`、`R2_ACCESS_KEY_ID`、`R2_SECRET_ACCESS_KEY`（`R2_REGION`）；浏览器直传再跑 `bun run storage:cors` | [对象存储](./object-storage.md) |
 | PostHog | `POSTHOG_PROJECT_TOKEN`（服务端）、`VITE_POSTHOG_PROJECT_TOKEN`（浏览器） | [分析](./analytics.md) |
 | Google / GitHub / Apple 登录 | `GOOGLE_*`、`GITHUB_*`、`APPLE_*` | [原生与 Web 登录](./native-ios-auth.md) |
-| App Store 内购 | `APP_STORE_ISSUER_ID`、`APP_STORE_KEY_ID`、`APP_STORE_PRIVATE_KEY_BASE64`、`APP_STORE_ENVIRONMENTS` | `packages/better-auth-app-store/README.md` |
+| App Store 内购 | `APP_STORE_ISSUER_ID`、`APP_STORE_KEY_ID`、`APP_STORE_PRIVATE_KEY_BASE64`、`APP_STORE_ENVIRONMENTS` | [App Store 内购](./app-store-subscriptions.md) |
 
 ## 3. 项目身份（代码里，不是环境变量）
 
@@ -42,11 +42,11 @@
 ## 4. Admin → Settings 的运行设置
 
 助手额度（Free/Pro 每 5 分钟与每 UTC 日）存在 `runtime_settings` 的 `operations` scope：
-首次保存前使用部署变量 `ASSISTANT_*_RUN_LIMIT_*` 或默认值；保存后以数据库快照为准，每次修改带修订号与审计。
+首次保存前使用合同默认值；保存后以数据库快照为准，每次修改带修订号与审计。
 
 产品自己的运行设置用同一机制登记一个新 scope：
 
-1. `packages/product/src/<name>-settings.ts`：zod `strictObject` 合同、默认值、可选的部署变量；
+1. `packages/product/src/<name>-settings.ts`：zod `strictObject` 合同与默认值；
 2. `packages/product/src/routers/<name>-settings.ts`：`createSettingsStore(db, definition)` 与
    `createSettingsRouter(definition, store)`，在 `router.ts` 挂到 `config.<name>`；
 3. `apps/web/src/product/index.ts` 的 `productAdminSettings` 加一项，组件里用 `RuntimeSettingsPanel`。

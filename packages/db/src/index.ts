@@ -4,6 +4,7 @@ import pg from "pg";
 
 import { acquireAdvisoryLockConnection } from "./advisory-lock";
 import * as schema from "./schema";
+import { IDENTIFIER_PREFIX } from "@northwind/env/brand";
 
 // One ESM singleton means one pool per API or worker process. Auth, tRPC, raw SQL,
 // advisory locks, readiness, Mastra and the Intelligence Module all share this pool.
@@ -13,7 +14,7 @@ export const pool = new pg.Pool({
   connectionTimeoutMillis: 5_000,
   idleTimeoutMillis: 30_000,
   allowExitOnIdle: false,
-  application_name: process.env.APP_PROCESS_NAME ?? "northwind-api",
+  application_name: process.env.APP_PROCESS_NAME ?? `${IDENTIFIER_PREFIX}-api`,
 });
 
 export const db = drizzle({ client: pool, schema });

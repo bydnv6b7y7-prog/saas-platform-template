@@ -1,9 +1,10 @@
+import { IDENTIFIER_PREFIX } from "@northwind/env/brand";
 export const COPILOT_SIDEBAR_MIN_WIDTH = 360;
 export const COPILOT_SIDEBAR_MAX_WIDTH = 520;
 export const COPILOT_SIDEBAR_DEFAULT_WIDTH = 420;
 const COPILOT_SIDEBAR_WIDTH_STEP = 16;
 export const COPILOT_SIDEBAR_STORAGE_KEY =
-  "northwind-copilot:sidebar-width";
+  `${IDENTIFIER_PREFIX}-copilot:sidebar-width`;
 
 export function clampCopilotSidebarWidth(value: number): number {
   if (!Number.isFinite(value)) return COPILOT_SIDEBAR_DEFAULT_WIDTH;

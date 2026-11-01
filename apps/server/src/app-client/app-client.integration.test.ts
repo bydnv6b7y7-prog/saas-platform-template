@@ -3,7 +3,7 @@ import { APP_CLIENT_CONFIG_DEFAULTS, FEEDBACK_CONTEXTS, FEEDBACK_LIMITS, type Ap
 import { mkdir } from "node:fs/promises";
 
 import type { Context } from "@northwind/api/context";
-import type { FeedbackScreenshotStorage } from "@northwind/api/feedback-screenshots";
+import type { ObjectStorage } from "@northwind/api/object-storage";
 
 // The failure modes this proves are listed in docs/app-feedback-rating.md §4.
 // Never run against DATABASE_URL: the child process points every singleton at
@@ -100,13 +100,13 @@ if (!url || process.env.APP_FEEDBACK_TEST_CHILD !== "1") {
      * object is `null`, deleting twice is fine. Tests can also plant objects
      * directly, as a client ignoring its link could not but storage might hold.
      */
-    class MemoryStorage implements FeedbackScreenshotStorage {
+    class MemoryStorage implements ObjectStorage {
       objects = new Map<string, { bytes: Uint8Array; contentType: string }>();
       signed = new Map<string, { byteLength: number }>();
       failing = false;
       deleted: string[] = [];
       private check() { if (this.failing) throw new Error("R2 unavailable"); }
-      async presignUpload(key: string, byteLength: number) {
+      async presignUpload(key: string, { byteLength }: { contentType: string; byteLength: number }) {
         this.signed.set(key, { byteLength });
         return { url: `memory://bucket/${key}`, headers: { "Content-Type": "image/jpeg", "Content-Length": String(byteLength) } };
       }

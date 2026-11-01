@@ -33,7 +33,6 @@ describe("billing contract", () => {
       assistantUsageStatusSchema.parse({
         plan: "free",
         accessSource: "free",
-        historyEnabled: true,
         limits: { per5Minutes: 5, perDay: 5 },
         daily: {
           used: 1,
@@ -59,7 +58,6 @@ describe("billing contract", () => {
       assistantUsageStatusSchema.parse({
         plan: "free",
         accessSource: "free",
-        historyEnabled: true,
         limits: { per5Minutes: 5, perDay: 5 },
         daily: { used: 1, remaining: 4, resetAt: "tomorrow" },
       }),

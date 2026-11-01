@@ -11,8 +11,8 @@
     "./app-feedback": {
       "default": "./src/app-feedback.ts"
     },
-    "./feedback-screenshots": {
-      "default": "./src/feedback-screenshots.ts"
+    "./object-storage": {
+      "default": "./src/object-storage.ts"
     },
     "./app-store-admin": {
       "default": "./src/app-store-admin.ts"
@@ -22,6 +22,12 @@
     },
     "./operational-settings": {
       "default": "./src/operational-settings.ts"
+    },
+    "./user-objects": {
+      "default": "./src/user-objects.ts"
+    },
+    "./routers/uploads": {
+      "default": "./src/routers/uploads.ts"
     },
     "./settings-store": {
       "default": "./src/settings-store.ts"

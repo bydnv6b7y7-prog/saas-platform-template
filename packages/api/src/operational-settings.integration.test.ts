@@ -34,8 +34,7 @@ if (!url || process.env.OPS_TEST_CHILD !== "1") {
         BETTER_AUTH_URL: "http://localhost:3000",
         CORS_ORIGIN: "http://localhost:3001",
         ADMIN_USER_IDS: "",
-        MARKET_AI_ENABLED: "false",
-        CONFIG_EDIT_ENABLED: "false",
+       
       },
       stdout: "pipe",
       stderr: "pipe",
@@ -51,11 +50,13 @@ if (!url || process.env.OPS_TEST_CHILD !== "1") {
   describe("operational settings PostgreSQL transactions", () => {
     let connection: typeof import("@northwind/db");
     let settings: typeof import("./operational-settings");
+    let settingsStore: typeof import("./settings-store");
     let config: typeof import("./routers/config");
 
     beforeAll(async () => {
       connection = await import("@northwind/db");
       settings = await import("./operational-settings");
+      settingsStore = await import("./settings-store");
       config = await import("./routers/config");
       const exists = await connection.pool.query("SELECT to_regclass('public.runtime_settings') AS name");
       if (!exists.rows[0].name) {
@@ -70,19 +71,17 @@ if (!url || process.env.OPS_TEST_CHILD !== "1") {
     });
     afterAll(async () => { await connection.pool.end(); });
 
-    const store = (lookup = 50) => settings.createOperationalSettingsStore(connection.db, () => ({
-      ...OPERATIONAL_SETTINGS_DEFAULTS,
-      assistantProPerDay: lookup,
-    }));
+    const store = (lookup = 50) => settingsStore.createSettingsStore(connection.db, {
+      ...settings.operationalSettingsDefinition,
+      defaults: { ...OPERATIONAL_SETTINGS_DEFAULTS, assistantProPerDay: lookup },
+    });
     const changed = (lookup = 60) => ({ ...OPERATIONAL_SETTINGS_DEFAULTS, assistantProPerDay: lookup });
 
-    test("deployment fallback is exact, uncached, and superseded by the full database snapshot", async () => {
-      expect(await store(200).read()).toMatchObject({ values: changed(200), revision: 0, source: "deployment", updatedAt: null });
+    test("defaults apply until the first save, then the full database snapshot wins", async () => {
+      expect(await store(200).read()).toMatchObject({ values: changed(200), revision: 0, source: "default", updatedAt: null });
       const next = await store(200).update({ expectedRevision: 0, values: changed(), actorId: "operator" });
       expect(next).toMatchObject({ values: changed(), revision: 1, source: "database", updatedBy: "operator" });
       expect(await store(999).read()).toEqual(next);
-      const strict = settings.createOperationalSettingsStore(connection.db, () => { throw new Error("must not read deployment values"); });
-      expect(await strict.read()).toEqual(next);
       expect(await store().history()).toEqual([{
         revision: 1, actorId: "operator", createdAt: next.updatedAt!, before: changed(200), after: changed(),
       }]);
@@ -101,7 +100,7 @@ if (!url || process.env.OPS_TEST_CHILD !== "1") {
 
     test("no-op saves never write; stale saves cannot bypass revision validation", async () => {
       expect(await store().update({ expectedRevision: 0, values: changed(50), actorId: "alice" }))
-        .toMatchObject({ revision: 0, source: "deployment" });
+        .toMatchObject({ revision: 0, source: "default" });
       expect(await store().history()).toEqual([]);
       const next = await store().update({ expectedRevision: 0, values: changed(), actorId: "alice" });
       expect(await store().update({ expectedRevision: 1, values: changed(), actorId: "bob" })).toEqual(next);

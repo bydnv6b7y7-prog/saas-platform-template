@@ -10,7 +10,7 @@ import { assistantPageContextDescription } from "@/product/assistant";
 
 import { AGENT_ID, useAssistantControl } from "./context";
 
-export function AppStoreCopilotBehavior({
+export function AssistantBehavior({
   pageContext,
 }: {
   pageContext: AssistantPageContext;

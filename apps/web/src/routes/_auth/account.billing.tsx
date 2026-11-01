@@ -22,6 +22,7 @@ import {
   billingStatusQueryOptions,
 } from "@/lib/billing";
 import { productHome, productPricing } from "@/product";
+import { brandName } from "@/lib/brand";
 
 export const Route = createFileRoute("/_auth/account/billing")({
   component: AccountBillingPage,
@@ -97,7 +98,7 @@ function AccountBillingPage() {
             <div>
               <div className="flex items-center gap-2">
                 <CreditCard className="size-5 text-brand" aria-hidden="true" />
-                <h2 className="text-xl font-semibold tracking-tight">Northwind Pro</h2>
+                <h2 className="text-xl font-semibold tracking-tight">{brandName} Pro</h2>
               </div>
               <p className="mt-2 text-sm text-muted-foreground">
                 {planLabel(currentSubscription.plan)} billing{priceDetail}

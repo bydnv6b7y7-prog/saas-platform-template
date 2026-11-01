@@ -16,7 +16,7 @@ import {
 
 import { logError } from "../logging";
 
-export const COPILOT_ABORT_SIGNAL_KEY = "northwind.copilot.abort-signal";
+export const COPILOT_ABORT_SIGNAL_KEY = "assistant.abort-signal";
 
 type RawRequestContext = Pick<
   RequestContext,

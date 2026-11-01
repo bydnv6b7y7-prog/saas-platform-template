@@ -6,8 +6,8 @@ import { ASSISTANT_RUN_PHASE_LABELS } from "@/lib/assistant-run-state";
 
 import { useAssistantControl } from "./context";
 
-export const AppStoreMessageView = Object.assign(
-  function AppStoreMessageView({
+export const AssistantMessageView = Object.assign(
+  function AssistantMessageView({
     children: _children,
     ...props
   }: ComponentProps<typeof CopilotChatMessageView>) {

@@ -32,6 +32,7 @@ import {
   scopedAssistantThreadId,
   UserScopedAgentRunner,
 } from "./user-scoped-runner";
+import { BRAND_NAME } from "@northwind/env/brand";
 
 type LocalMastraAgentConfig = ConstructorParameters<typeof MastraAgent>[0];
 type RuntimeAgents = ConstructorParameters<typeof CopilotRuntime>[0]["agents"];
@@ -231,8 +232,8 @@ export function createCopilotRuntimeApp(
           429,
           "assistant_limit_reached",
           daily
-            ? "The daily Northwind AI limit has been reached."
-            : "Northwind AI is receiving requests too quickly.",
+            ? `The daily ${BRAND_NAME} AI limit has been reached.`
+            : `${BRAND_NAME} AI is receiving requests too quickly.`,
           {
             limit: decision.reason,
             plan: c.get("assistantAccess").plan,

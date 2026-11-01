@@ -1,6 +1,5 @@
 import { z } from "zod";
 
-import { appleApplicationLegacyIdentitySchema } from "./apple-application";
 import { APP_STORE_CREDENTIAL_KEYS, APP_STORE_MAINTENANCE_KEYS, appStoreServerSchema } from "./app-store";
 
 type DeploymentValues = Record<string, string | undefined>;
@@ -16,7 +15,6 @@ export function appStoreDeploymentLines(production: DeploymentValues, existing: 
     "APP_STORE_ENABLED",
     "APP_STORE_ENVIRONMENTS",
     ...APP_STORE_MAINTENANCE_KEYS,
-    ...Object.keys(appleApplicationLegacyIdentitySchema.shape),
   ];
   const selected: DeploymentValues = {};
   for (const key of keys) {

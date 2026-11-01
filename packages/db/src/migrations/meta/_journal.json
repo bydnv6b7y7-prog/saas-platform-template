@@ -15,6 +15,13 @@
       "when": 1793460013056,
       "tag": "0001_durable_ag_ui_runs",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793528817804,
+      "tag": "0002_storage_and_notes",
+      "breakpoints": true
     }
   ]
 }

@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { mergeEnvLines, parseDeployPolicy, setEnvFileValue } from "./deploy-config";
 
 describe("deploy configuration helpers", () => {
-  test("defaults to the strict production policy and rejects unknown values", () => {
+  test("defaults to production with only email required and rejects unknown values", () => {
     expect(parseDeployPolicy({})).toEqual({ stage: "production", required: new Set(["email"]) });
     expect(parseDeployPolicy({ DEPLOY_STAGE: "staging", REQUIRED_INTEGRATIONS: "email" }))
       .toEqual({ stage: "staging", required: new Set(["email"]) });

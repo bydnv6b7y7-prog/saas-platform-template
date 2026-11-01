@@ -66,7 +66,7 @@ type ActiveRun = {
   heartbeatTimer: ReturnType<typeof setTimeout> | null;
 };
 
-export type PostgresAgentRunnerOptions = {
+type PostgresAgentRunnerOptions = {
   store?: AgentRunStore;
   leaseMs?: number;
   heartbeatMs?: number;

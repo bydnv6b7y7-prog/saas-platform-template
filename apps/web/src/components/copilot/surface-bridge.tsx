@@ -17,6 +17,7 @@ import {
   useAssistantControl,
   visibleFocusableElements,
 } from "./context";
+import { assistantName } from "@/lib/brand";
 
 export const CopilotSurfaceBridge = forwardRef<
   HTMLButtonElement,
@@ -48,7 +49,7 @@ export const CopilotSurfaceBridge = forwardRef<
 
     if (sidebar) {
       sidebar.id = SIDEBAR_ID;
-      sidebar.setAttribute("aria-label", "Northwind AI assistant");
+      sidebar.setAttribute("aria-label", `${assistantName} assistant`);
     }
 
     const updateMode = () => {
@@ -58,7 +59,7 @@ export const CopilotSurfaceBridge = forwardRef<
         open,
       });
       document.body.classList.toggle(
-        "northwind-copilot-modal-open",
+        "assistant-modal-open",
         state.compactModalOpen,
       );
       if (appShell) appShell.inert = state.appShellInert;
@@ -78,7 +79,7 @@ export const CopilotSurfaceBridge = forwardRef<
     media.addEventListener("change", updateMode);
     return () => {
       media.removeEventListener("change", updateMode);
-      document.body.classList.remove("northwind-copilot-modal-open");
+      document.body.classList.remove("assistant-modal-open");
       if (appShell) appShell.inert = previousAppShellInert;
       if (sidebar) {
         sidebar.inert = previousSidebarInert;

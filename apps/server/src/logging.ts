@@ -1,9 +1,10 @@
 import { AsyncLocalStorage } from "node:async_hooks";
+import { IDENTIFIER_PREFIX } from "@northwind/env/brand";
 
-export type LogLevel = "info" | "warn" | "error";
-export type LogFields = Record<string, unknown>;
+type LogLevel = "info" | "warn" | "error";
+type LogFields = Record<string, unknown>;
 
-export type SafeErrorFields = {
+type SafeErrorFields = {
   errorName: string;
   errorCode?: string;
 };
@@ -101,7 +102,7 @@ function writeLog(level: LogLevel, event: string, fields: LogFields = {}): void 
     ...sanitizeLogFields(fields),
     timestamp: new Date().toISOString(),
     level,
-    service: "northwind-server",
+    service: `${IDENTIFIER_PREFIX}-server`,
     process: process.env.APP_PROCESS_NAME || "api",
     environment: process.env.NODE_ENV || "development",
     release: process.env.BUILD_SHA || "development",

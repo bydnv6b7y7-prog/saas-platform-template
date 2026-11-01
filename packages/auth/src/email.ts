@@ -9,7 +9,7 @@ export type EmailMessage = {
 };
 
 export type SendEmail = (message: EmailMessage) => Promise<void>;
-export type EmailFetch = (url: string, init: RequestInit) => Promise<Response>;
+type EmailFetch = (url: string, init: RequestInit) => Promise<Response>;
 
 const deliveryResponseSchema = z.object({
   success: z.literal(true),
@@ -36,7 +36,7 @@ export function createEmailSender(environment: Record<string, unknown>, request:
 }
 
 /** Delivers to a local Mailpit inbox through its HTTP send API (no SMTP client needed). */
-export function createMailpitEmailSender(url: string, request: EmailFetch = globalThis.fetch): SendEmail {
+function createMailpitEmailSender(url: string, request: EmailFetch = globalThis.fetch): SendEmail {
   return async (message) => {
     try {
       const response = await request(`${url}/api/v1/send`, {

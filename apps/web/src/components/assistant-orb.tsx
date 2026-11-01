@@ -3,6 +3,7 @@ import { LoaderCircle, Sparkles } from "lucide-react";
 import { useMemo } from "react";
 
 import { assistantPageContextLabel, buildAssistantPageContext } from "@/product";
+import { assistantName } from "@/lib/brand";
 
 export type AssistantAccess = "loading" | "available" | "unavailable";
 
@@ -29,8 +30,8 @@ export function AssistantOrb({
   const contextLabel = assistantPageContextLabel(context);
   const label =
     access === "loading"
-      ? "Checking Northwind AI availability"
-      : `Ask Northwind AI about ${contextLabel}`;
+      ? `Checking ${assistantName} availability`
+      : `Ask ${assistantName} about ${contextLabel}`;
 
   return (
     <div
@@ -39,14 +40,14 @@ export function AssistantOrb({
       data-open={open ? "true" : "false"}
     >
       <span className="assistant-orb-label" aria-hidden="true">
-        <span>Northwind AI</span>
+        <span>{assistantName}</span>
         <span>{contextLabel}</span>
       </span>
       <button
         type="button"
         data-assistant-trigger={access === "available" ? "true" : undefined}
         aria-label={label}
-        aria-controls={access === "available" ? "northwind-copilot-sidebar" : undefined}
+        aria-controls={access === "available" ? "assistant-sidebar" : undefined}
         aria-expanded={access === "available" ? open : undefined}
         title={label}
         disabled={access !== "available"}

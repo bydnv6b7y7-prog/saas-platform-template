@@ -23,7 +23,7 @@ export function AssistantLaunchButton({
       variant="outline"
       data-assistant-trigger={access === "available" ? "true" : undefined}
       aria-controls={
-        access === "available" ? "northwind-copilot-sidebar" : undefined
+        access === "available" ? "assistant-sidebar" : undefined
       }
       aria-expanded={access === "available" ? open : undefined}
       disabled={access !== "available"}

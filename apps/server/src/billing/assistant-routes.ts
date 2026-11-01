@@ -9,6 +9,7 @@ import {
   type AssistantAccess,
   type AssistantPrincipal,
 } from "./assistant-access";
+import { BRAND_NAME } from "@northwind/env/brand";
 
 type AssistantUsageDependencies = {
   getSession: (headers: Headers) => Promise<{ user: AssistantPrincipal } | null>;
@@ -34,7 +35,7 @@ export function createAssistantUsageApp(
       const session = await dependencies.getSession(c.req.raw.headers);
       if (!session) {
         return c.json(
-          { error: { code: "unauthorized", message: "Sign in to use Northwind AI." } },
+          { error: { code: "unauthorized", message: `Sign in to use ${BRAND_NAME} AI.` } },
           401,
         );
       }

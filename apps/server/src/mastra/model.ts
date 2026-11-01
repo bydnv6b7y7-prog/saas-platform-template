@@ -5,6 +5,7 @@ import {
 } from "@northwind/env/copilot";
 import { createOpenAI } from "@ai-sdk/openai";
 import type { MastraModelConfig } from "@mastra/core/llm";
+import { IDENTIFIER_PREFIX } from "@northwind/env/brand";
 
 const environmentCopilotModelSelection = resolveCopilotModelSelection({
   provider: env.COPILOT_MODEL_PROVIDER,
@@ -56,7 +57,7 @@ export function assistantModel(): MastraModelConfig {
   const provider = createOpenAI({
     apiKey,
     ...(env.LLM_BASE_URL ? { baseURL: env.LLM_BASE_URL } : {}),
-    name: "northwind-llm",
+    name: `${IDENTIFIER_PREFIX}-llm`,
   });
   return provider.chat(runtime.model);
 }

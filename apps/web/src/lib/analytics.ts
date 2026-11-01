@@ -79,7 +79,7 @@ function clearAndDisableAnalytics(client: PostHog): void {
   analyticsIdentityReady = false;
 }
 
-export function clearPostHogTokenStorage(
+function clearPostHogTokenStorage(
   storage: AnalyticsStorage,
   projectToken: string,
 ): void {
@@ -188,7 +188,7 @@ function sanitizeInitialPersonInfo(
   return Object.keys(sanitized).length > 0 ? sanitized : undefined;
 }
 
-export function sanitizeAnalyticsProperties(
+function sanitizeAnalyticsProperties(
   properties: AnalyticsProperties,
 ): AnalyticsProperties {
   const sanitized = { ...properties };
@@ -360,14 +360,14 @@ export function setAnalyticsConsentDecision(
   });
 }
 
-export function applyDeferredAnalyticsDisable(
+function applyDeferredAnalyticsDisable(
   consent: AnalyticsConsent,
   disable: () => void,
 ): void {
   if (consent !== "granted") disable();
 }
 
-export function resumeAnalyticsThenRun<
+function resumeAnalyticsThenRun<
   Client extends AnalyticsIdentityClient,
 >(
   client: Client,

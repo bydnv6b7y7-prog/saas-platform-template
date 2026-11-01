@@ -1,11 +1,11 @@
 import { z } from "zod";
 
 /**
- * Where the iOS app's feedback screenshots live: one Cloudflare R2 bucket,
- * reached with S3 credentials (docs/app-feedback-rating.md). All four values
- * are set together or none are; with none, screenshots are simply off.
+ * The one object store every upload purpose shares (docs/object-storage.md):
+ * a Cloudflare R2 bucket, or any S3 API, reached with S3 credentials. All four
+ * values are set together or none are; with none, uploads are simply off.
  */
-type FeedbackStorageEnvironment = {
+type ObjectStorageEnvironment = {
   R2_REGION?: string;
   R2_ACCESS_KEY_ID?: string;
   R2_SECRET_ACCESS_KEY?: string;
@@ -13,11 +13,11 @@ type FeedbackStorageEnvironment = {
   R2_ENDPOINT?: string;
 };
 
-export type FeedbackStorageConfiguration =
+export type ObjectStorageConfiguration =
   | { configured: false }
   | { configured: true; region: string; accessKeyId: string; secretAccessKey: string; bucket: string; endpoint: string };
 
-export const feedbackStorageEnvSchema = {
+export const objectStorageEnvSchema = {
   R2_REGION: z.string().trim().min(1).optional(),
   R2_ACCESS_KEY_ID: z.string().trim().min(1).optional(),
   R2_SECRET_ACCESS_KEY: z.string().trim().min(1).optional(),
@@ -30,7 +30,7 @@ export const feedbackStorageEnvSchema = {
   ).optional(),
 };
 
-export function resolveFeedbackStorageConfig(environment: FeedbackStorageEnvironment): FeedbackStorageConfiguration {
+export function resolveObjectStorageConfig(environment: ObjectStorageEnvironment): ObjectStorageConfiguration {
   const values = {
     accessKeyId: environment.R2_ACCESS_KEY_ID?.trim() || undefined,
     secretAccessKey: environment.R2_SECRET_ACCESS_KEY?.trim() || undefined,

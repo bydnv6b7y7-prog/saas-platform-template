@@ -10,7 +10,7 @@ import { LoaderCircle } from "lucide-react";
 import { useEffect, useRef, useState, type ComponentProps } from "react";
 
 import { focusChatInput, useAssistantControl } from "./context";
-import { AppStoreCopilotHeader } from "./header";
+import { AssistantHeader } from "./header";
 import { CopilotSurfaceBridge } from "./surface-bridge";
 
 const THREAD_LOADING_DELAY_MS = 180;
@@ -67,8 +67,8 @@ const ThreadLoadingInput = Object.assign(
   CopilotChatInput,
 );
 
-export const AppStoreCopilotSidebarView = Object.assign(
-  function AppStoreCopilotSidebarView({
+export const AssistantSidebarView = Object.assign(
+  function AssistantSidebarView({
     input,
     isConnecting = false,
     messageView,
@@ -88,13 +88,13 @@ export const AppStoreCopilotSidebarView = Object.assign(
         {...props}
         aria-busy={isConnecting}
         defaultOpen={false}
-        header={AppStoreCopilotHeader}
+        header={AssistantHeader}
         input={isConnecting ? ThreadLoadingInput : input}
         isConnecting={isConnecting}
         messageView={isConnecting ? ThreadLoadingMessageView : messageView}
         position="right"
         toggleButton={CopilotSurfaceBridge}
-        width="var(--northwind-copilot-sidebar-width, 420px)"
+        width="var(--assistant-sidebar-width, 420px)"
       />
     );
   },

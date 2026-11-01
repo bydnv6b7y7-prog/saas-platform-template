@@ -158,7 +158,7 @@ export function useAssistantLifecycle(
             }),
           )
           .catch(() => {
-            console.warn("[Northwind AI] Conversation title was not saved");
+            console.warn("[assistant] Conversation title was not saved");
           });
       },
       onRunFailed: ({ input }) => failRun(input.runId),
@@ -180,11 +180,11 @@ export function useAssistantLifecycle(
     try {
       copilotkit.stopAgent({ agent });
     } catch {
-      console.error("[Northwind AI] Stop failed");
+      console.error("[assistant] Stop failed");
       try {
         agent.abortRun();
       } catch {
-        console.error("[Northwind AI] Abort fallback failed");
+        console.error("[assistant] Abort fallback failed");
       }
     }
   }, [agent, copilotkit, runState.runId]);

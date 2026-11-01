@@ -1,7 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import dotenv from "dotenv";
 
-import { APPLE_APPLICATION } from "./apple-application";
 import { appStoreDeploymentLines } from "./app-store-deployment";
 
 const credentials = {
@@ -26,14 +25,6 @@ describe("App Store production provisioning", () => {
   test("requires complete credentials for enabled deployments and honors explicit disablement", () => {
     expect(() => read({})).toThrow("explicitly set APP_STORE_ENABLED=false");
     expect(read({ APP_STORE_ENABLED: "false" })).toEqual({ APP_STORE_ENABLED: "false", APP_STORE_ENVIRONMENTS: "Production" });
-  });
-  test("validates deprecated identities without writing them into the new environment", () => {
-    const result = read({ ...credentials, APP_STORE_BUNDLE_ID: APPLE_APPLICATION.bundleId,
-      APPLE_APP_BUNDLE_IDENTIFIER: APPLE_APPLICATION.bundleId,
-      APP_STORE_APP_APPLE_ID: String(APPLE_APPLICATION.appAppleId),
-      APP_STORE_SUBSCRIPTION_GROUP_IDS: APPLE_APPLICATION.subscriptionGroupId });
-    expect(Object.keys(result)).toHaveLength(5);
-    expect(() => read({ ...credentials, APP_STORE_SUBSCRIPTION_GROUP_IDS: "123" })).toThrow("APP_STORE_SUBSCRIPTION_GROUP_IDS");
   });
   test("keeps explicit maintenance overrides and rejects unsafe serialization without exposing secrets", () => {
     expect(read({ ...credentials, APP_STORE_REVERIFY_INTERVAL_SECONDS: "1200" }).APP_STORE_REVERIFY_INTERVAL_SECONDS).toBe("1200");

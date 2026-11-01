@@ -1,5 +1,9 @@
 name: northwind
 
+# Product services (background workers and their volumes) live with the product.
+include:
+  - path: packages/product/compose.yml
+
 x-default-logging: &default-logging
   driver: json-file
   options:

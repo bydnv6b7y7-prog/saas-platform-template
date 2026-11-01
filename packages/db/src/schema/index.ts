@@ -3,3 +3,4 @@ export * from "./auth";
 export * from "./iap";
 export * from "./runtime-settings";
 export * from "./usage";
+export * from "./stored-object";

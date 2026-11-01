@@ -6,11 +6,12 @@ import {
 
 import { assistantAgents } from "../product";
 import { mastraStorage } from "./storage";
+import { IDENTIFIER_PREFIX } from "@northwind/env/brand";
 
 const mastraObservability = new Observability({
   configs: {
     default: {
-      serviceName: "northwind-mastra",
+      serviceName: `${IDENTIFIER_PREFIX}-mastra`,
       exporters: [
         new MastraStorageExporter({
           strategy: "batch-with-updates",

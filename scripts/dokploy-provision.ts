@@ -10,7 +10,7 @@
  *   → application.create（migration/server/web，产品声明 worker 时再加一个）
  *   → saveDockerProvider（GHCR 镜像 + 凭证）
  *   → saveEnvironment（server 注入运行时 env；web 固定 Bun SSR 监听参数）
- *   → mount（产品声明的共享卷）+ domain × 2（letsencrypt）
+ *   → mount（产品 worker 声明的卷）+ domain × 2（letsencrypt）
  *   → 把 applicationId、数据库密码与生成的 BETTER_AUTH_SECRET 回写 .env.dokploy.local
  *
  * 产品相关的变量、卷与 worker 只来自 packages/product/src/deployment.ts。
@@ -33,7 +33,6 @@ import {
   parseAnalyticsCountryCodes,
 } from "@northwind/env/analytics-privacy";
 import { stripeSecretMode } from "@northwind/env/stripe";
-import { operationalSettingsEnvSchema } from "@northwind/env/operational-settings";
 import { productDeployment } from "@northwind/product/deployment";
 import { cloudflareEmailKeys, readCloudflareEmailConfiguration } from "@northwind/env/email";
 import { appStoreDeploymentLines } from "@northwind/env/app-store-deployment";
@@ -319,9 +318,6 @@ async function main() {
     throw new Error("application.one 未返回现有 API 环境；拒绝覆盖应用环境以保留 Apple 凭据");
   }
   const appStoreEnvLines = appStoreDeploymentLines(process.env, dotenv.parse(currentApiDetail?.env ?? ""));
-  // Deployment-only bootstrap values; never inherit development quotas.
-  // Admin database settings take precedence after the first save.
-  const operationalEnv = operationalSettingsEnvSchema.parse(process.env);
   const adminUserIdList = (process.env.ADMIN_USER_IDS ?? localEnv.ADMIN_USER_IDS ?? "")
     .split(",")
     .map((userId) => userId.trim())
@@ -367,14 +363,14 @@ async function main() {
     : [];
   // iOS app feedback (docs/app-feedback-rating.md): screenshots in R2 — all four or
   // none, otherwise the API refuses to start — and an optional notification address.
-  const feedbackStorageKeys = ["R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY", "R2_BUCKET", "R2_ENDPOINT"] as const;
-  const presentStorageKeys = feedbackStorageKeys.filter((key) => process.env[key]?.trim());
-  if (presentStorageKeys.length > 0 && presentStorageKeys.length < feedbackStorageKeys.length) {
-    throw new Error(`生产供给的 R2 配置不完整（.env.dokploy.local）：${feedbackStorageKeys.join("、")} 必须同时设置`);
+  const objectStorageKeys = ["R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY", "R2_BUCKET", "R2_ENDPOINT"] as const;
+  const presentStorageKeys = objectStorageKeys.filter((key) => process.env[key]?.trim());
+  if (presentStorageKeys.length > 0 && presentStorageKeys.length < objectStorageKeys.length) {
+    throw new Error(`生产供给的 R2 配置不完整（.env.dokploy.local）：${objectStorageKeys.join("、")} 必须同时设置`);
   }
   const feedbackEnvLines = [
     ...(presentStorageKeys.length > 0
-      ? [...feedbackStorageKeys, ...(process.env.R2_REGION?.trim() ? ["R2_REGION"] as const : [])]
+      ? [...objectStorageKeys, ...(process.env.R2_REGION?.trim() ? ["R2_REGION"] as const : [])]
         .map((key) => `${key}=${JSON.stringify(process.env[key]!.trim())}`)
       : []),
     ...(process.env.FEEDBACK_NOTIFY_EMAIL?.trim()
@@ -505,7 +501,6 @@ async function main() {
     `HTTP_SLOW_REQUEST_MS=${localEnv.HTTP_SLOW_REQUEST_MS || "1000"}`,
     `MASTRA_TRACE_RETENTION_DAYS=${localEnv.MASTRA_TRACE_RETENTION_DAYS || "14"}`,
     `ASSISTANT_CONTEXT_TOKEN_LIMIT=${localEnv.ASSISTANT_CONTEXT_TOKEN_LIMIT || "32000"}`,
-    ...Object.entries(operationalEnv).map(([key, value]) => `${key}=${value}`),
     ...(localEnv.METRICS_TOKEN ? [`METRICS_TOKEN=${localEnv.METRICS_TOKEN}`] : []),
     ...productDeployment.serverEnv(process.env, localEnv),
   ];
@@ -538,9 +533,6 @@ async function main() {
   const posthogEnvLines = analyticsEnabled
     ? [`POSTHOG_PROJECT_TOKEN=${POSTHOG_PROJECT_TOKEN}`, `POSTHOG_HOST=${posthogHostUrl.origin}`]
     : [];
-  const productMount = productDeployment.volume
-    ? { volumeName: `${PROJECT}-${productDeployment.volume.name}`, mountPath: productDeployment.volume.mountPath }
-    : undefined;
   const worker = productDeployment.worker;
   const apps: Array<{
     role: "migration" | "server" | "web" | "worker";
@@ -580,7 +572,6 @@ async function main() {
       ].join("\n"),
       domain: { host: API_HOST, port: 3000 },
       port: { publishedPort: 3000, targetPort: 3000 },
-      mount: productMount,
     },
     {
       role: "web",
@@ -603,7 +594,7 @@ async function main() {
       image: `${REGISTRY_URL}/${NS}/${SERVER_IMAGE}:${IMAGE_TAG}`,
       env: mergeEnvLines(serverEnvLines, [...worker.env, "APP_PROCESS_NAME=worker"]).join("\n"),
       command: worker.command,
-      mount: productMount,
+      ...(worker.volume ? { mount: { volumeName: `${PROJECT}-${worker.volume.name}`, mountPath: worker.volume.mountPath } } : {}),
     }] : []),
   ];
 

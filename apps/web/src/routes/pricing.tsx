@@ -23,6 +23,7 @@ import { authClient } from "@/lib/auth-client";
 import { captureAnalytics } from "@/lib/analytics";
 import { createSeoHead } from "@/lib/seo";
 import { productHome, productPricing } from "@/product";
+import { assistantName, brandName } from "@/lib/brand";
 
 export const Route = createFileRoute("/pricing")({
   component: PricingPage,
@@ -46,7 +47,7 @@ const freeFeatures = productPricing.freeFeatures;
 
 const proFeatures = [
   "Everything in Free",
-  "100 Northwind AI requests per day",
+  `100 ${assistantName} requests per day`,
 ] as const;
 
 function FeatureList({ features }: { features: readonly string[] }) {
@@ -234,7 +235,7 @@ function PricingPage() {
               <div>
                 <div className="flex items-center gap-2">
                   <Sparkles className="size-4 text-brand" aria-hidden="true" />
-                  <p className="text-sm font-medium">Northwind Pro</p>
+                  <p className="text-sm font-medium">{brandName} Pro</p>
                   {hasAdminAccess ? (
                     <span className="rounded-full bg-brand/10 px-2 py-0.5 text-xs font-medium text-brand">
                       Admin access
@@ -338,7 +339,7 @@ function PricingPage() {
       <div className="mx-auto mt-8 flex max-w-3xl items-start gap-3 rounded-2xl border border-border/70 bg-muted/35 p-4 text-sm leading-6 text-muted-foreground">
         <ShieldCheck className="mt-0.5 size-5 shrink-0 text-brand" aria-hidden="true" />
         <p>
-          Payment details go directly to Stripe and are never stored by Northwind. Manage invoices,
+          Payment details go directly to Stripe and are never stored by {brandName}. Manage invoices,
           payment methods, and cancellation from your billing portal.
         </p>
       </div>

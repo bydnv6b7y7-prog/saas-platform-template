@@ -38,7 +38,6 @@ export type SessionStatus = {
   retry: () => void;
 };
 
-const CurrentUserContext = createContext<AppUser | null>(null);
 type AssistantSurfaceValue = {
   access: AssistantAccess;
   open: boolean;
@@ -48,9 +47,9 @@ type AssistantSurfaceValue = {
 const AssistantSurfaceContext = createContext<AssistantSurfaceValue | null>(
   null,
 );
-const AppStoreCopilot = lazy(() =>
+const AssistantCopilot = lazy(() =>
   import("@/components/copilot").then((module) => ({
-    default: module.AppStoreCopilot,
+    default: module.AssistantCopilot,
   })),
 );
 
@@ -100,10 +99,6 @@ function SiteFooter() {
       </div>
     </footer>
   );
-}
-
-export function useCurrentUser(): AppUser | null {
-  return useContext(CurrentUserContext);
 }
 
 export function useOptionalAssistantSurface(): AssistantSurfaceValue | null {
@@ -188,38 +183,36 @@ export function AppShell({
   );
 
   return (
-    <CurrentUserContext.Provider value={user}>
-      <AssistantSurfaceContext.Provider value={assistantSurface}>
-        <div data-app-shell className="flex min-h-svh min-w-0 flex-col">
-          <a href="#main-content" className="skip-link">
-            Skip to content
-          </a>
-          <Header user={user} isAdmin={adminAccess.data === true} sessionStatus={sessionStatus} />
-          <main id="main-content" className="min-w-0 flex-1">
-            {children}
-          </main>
-          <SiteFooter />
-          {user ? (
-            <AssistantOrb
-              access={assistantAccess}
-              open={assistantOpen}
-              onToggle={handleAssistantToggle}
-            />
-          ) : null}
-        </div>
-        {user && assistantUsage.data ? (
-          <Suspense fallback={null}>
-            <AppStoreCopilot
-              key={user.id}
-              open={assistantOpen}
-              onOpenChange={handleAssistantOpenChange}
-              usage={assistantUsage.data}
-              userId={user.id}
-            />
-          </Suspense>
+    <AssistantSurfaceContext.Provider value={assistantSurface}>
+      <div data-app-shell className="flex min-h-svh min-w-0 flex-col">
+        <a href="#main-content" className="skip-link">
+          Skip to content
+        </a>
+        <Header user={user} isAdmin={adminAccess.data === true} sessionStatus={sessionStatus} />
+        <main id="main-content" className="min-w-0 flex-1">
+          {children}
+        </main>
+        <SiteFooter />
+        {user ? (
+          <AssistantOrb
+            access={assistantAccess}
+            open={assistantOpen}
+            onToggle={handleAssistantToggle}
+          />
         ) : null}
-      </AssistantSurfaceContext.Provider>
-    </CurrentUserContext.Provider>
+      </div>
+      {user && assistantUsage.data ? (
+        <Suspense fallback={null}>
+          <AssistantCopilot
+            key={user.id}
+            open={assistantOpen}
+            onOpenChange={handleAssistantOpenChange}
+            usage={assistantUsage.data}
+            userId={user.id}
+          />
+        </Suspense>
+      ) : null}
+    </AssistantSurfaceContext.Provider>
   );
 }
 

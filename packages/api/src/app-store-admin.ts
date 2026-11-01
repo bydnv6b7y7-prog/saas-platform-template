@@ -4,7 +4,7 @@ import { ERROR_MESSAGES } from "@northwind/better-auth-app-store/errors";
 import type { AppStoreEnvironment, AppStoreStore } from "@northwind/better-auth-app-store/types";
 import { and, db, desc, eq, inArray, sql } from "@northwind/db";
 import { iapAdminAction, iapNotification, iapTables } from "@northwind/db/schema/iap";
-import { APPLE_APPLICATION, appleApplicationLegacyIdentitySchema } from "@northwind/env/apple-application";
+import { APPLE_APPLICATION } from "@northwind/env/apple-application";
 import { APP_STORE_CREDENTIAL_KEYS, APP_STORE_ENVIRONMENTS, APP_STORE_MAINTENANCE_DEFAULTS, appStoreEnvironmentsSchema, appStoreMaintenanceSchema } from "@northwind/env/app-store";
 import { env } from "@northwind/env/server";
 import { TRPCError } from "@trpc/server";
@@ -59,7 +59,6 @@ export type AppStoreAdminOverview = AppStoreAdminConfiguration & {
 export function readAppStoreAdminConfiguration(values: Record<string, unknown>): AppStoreAdminConfiguration {
   const credentials = CREDENTIAL_KEYS.map(key => ({ key, present: typeof values[key] === "string" && !!values[key].trim() }));
   const environments = appStoreEnvironmentsSchema.safeParse(values.APP_STORE_ENVIRONMENTS);
-  const identity = appleApplicationLegacyIdentitySchema.safeParse(values);
   const intervals = appStoreMaintenanceSchema.safeParse(values);
   let keyValid = !credentials[2]!.present;
   if (credentials[2]!.present) {
@@ -73,7 +72,7 @@ export function readAppStoreAdminConfiguration(values: Record<string, unknown>):
     const url = new URL(String(values.BETTER_AUTH_URL));
     if (["https:", "http:"].includes(url.protocol)) notificationUrl = `${url.origin}/api/auth/app-store/notifications`;
   } catch { /* Report an unavailable address instead of leaking the deployment value. */ }
-  const valid = environments.success && identity.success && intervals.success && keyValid && notificationUrl !== null;
+  const valid = environments.success && intervals.success && keyValid && notificationUrl !== null;
   return {
     application: APPLE_APPLICATION,
     enabled: values.APP_STORE_ENABLED !== false && values.APP_STORE_ENABLED !== "false",

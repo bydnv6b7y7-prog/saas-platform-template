@@ -7,7 +7,7 @@ const MASTRA_RETENTION_LOCK = 72_960_414;
 const RETENTION_INTERVAL_MS = 24 * 60 * 60 * 1_000;
 const STARTED_KEY = Symbol.for("mastra.retention.started");
 
-export type MastraRetentionController = {
+type MastraRetentionController = {
   stopAndDrain(): Promise<void>;
 };
 

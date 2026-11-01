@@ -10,8 +10,9 @@
     "admin:lookup": "bun run src/admin-lookup-cli.ts",
     "admin:app-store": "bun run src/admin-app-store-cli.ts",
     "mastra:migrate": "bun run src/mastra/migrate.ts",
-    "test": "DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/appstore_test BETTER_AUTH_SECRET=test-only-secret-test-only-secret-123 BETTER_AUTH_URL=http://127.0.0.1:3000 CORS_ORIGIN=http://127.0.0.1:3001 COPILOT_MODEL_PROVIDER=openai-compatible COPILOTKIT_TELEMETRY_DISABLED=true APP_STORE_ENABLED=false SKIP_ENV_VALIDATION= bun test src/logging.test.ts src/mastra src/billing src/app-client --path-ignore-patterns='dist/**'",
-    "start": "bun run dist/index.mjs"
+    "test": "DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/appstore_test BETTER_AUTH_SECRET=test-only-secret-test-only-secret-123 BETTER_AUTH_URL=http://127.0.0.1:3000 CORS_ORIGIN=http://127.0.0.1:3001 COPILOT_MODEL_PROVIDER=openai-compatible COPILOTKIT_TELEMETRY_DISABLED=true APP_STORE_ENABLED=false SKIP_ENV_VALIDATION= bun test src --path-ignore-patterns='dist/**'",
+    "start": "bun run dist/index.mjs",
+    "product": "bun run src/product/cli.ts"
   },
   "dependencies": {
     "@northwind/api": "workspace:*",

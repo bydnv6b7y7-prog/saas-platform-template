@@ -3,16 +3,12 @@ import {
   FeedbackRateLimited,
   FeedbackScreenshotUnavailable,
   claimableFeedbackScreenshot,
-  purgeFeedbackScreenshots,
+  feedbackScreenshots,
   reserveFeedbackScreenshot,
   submitAppFeedback,
   type NewFeedback,
 } from "@northwind/api/app-feedback";
-import {
-  SCREENSHOT_UPLOAD_SECONDS,
-  feedbackScreenshotStorage,
-  type FeedbackScreenshotStorage,
-} from "@northwind/api/feedback-screenshots";
+import { objectStorage, storedAsReserved, type ObjectStorage } from "@northwind/api/object-storage";
 import { auth, sendPlatformEmail } from "@northwind/auth";
 import {
   FEEDBACK_CATEGORIES,
@@ -37,7 +33,7 @@ type AppClientDependencies = {
   reserveScreenshot: (input: { installationId: string; ipHash: string; byteLength: number }) => Promise<{ id: string; objectKey: string; createdAt: Date }>;
   claimableScreenshot: (uploadId: string, installationId: string) => Promise<{ objectKey: string; byteLength: number } | null>;
   /** `null` when R2 is not configured: screenshots are then off everywhere. */
-  storage: FeedbackScreenshotStorage | null;
+  storage: ObjectStorage | null;
   getUserId: (headers: Headers) => Promise<string | null>;
   notify: (feedback: NewFeedback & { id: string }) => Promise<void>;
   secret: string;
@@ -80,10 +76,6 @@ function clientIp(headers: Headers) {
   return headers.get("x-real-ip") ?? (forwarded ? forwarded.split(",").at(-1)?.trim() : undefined) ?? "local";
 }
 
-function isJpeg(bytes: Uint8Array) {
-  return bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
-}
-
 const escapeHtml = (value: string) => value.replace(/[&<>"']/g, (character) => (
   { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[character]!
 ));
@@ -95,7 +87,7 @@ const defaultDependencies: AppClientDependencies = {
   submit: submitAppFeedback,
   reserveScreenshot: reserveFeedbackScreenshot,
   claimableScreenshot: claimableFeedbackScreenshot,
-  storage: feedbackScreenshotStorage,
+  storage: objectStorage,
   getUserId: async (headers) => {
     try {
       return (await auth.api.getSession({ headers }))?.user.id ?? null;
@@ -139,6 +131,7 @@ async function readJson(c: Context): Promise<{ ok: true; value: unknown } | { ok
   }
 }
 
+/** @public Used by app-client.integration.test.ts through a dynamic import knip cannot follow. */
 export function createAppClientApp(overrides: Partial<AppClientDependencies> = {}) {
   const dependencies = { ...defaultDependencies, ...overrides };
   const ipHash = (headers: Headers) =>
@@ -187,13 +180,13 @@ export function createAppClientApp(overrides: Partial<AppClientDependencies> = {
         return c.json({ error: "unavailable" }, 503);
       }
       // Signing is local: no call to R2 happens here.
-      const ticket = await storage.presignUpload(reservation.objectKey, parsed.data.byteLength, SCREENSHOT_UPLOAD_SECONDS);
+      const ticket = await storage.presignUpload(reservation.objectKey, { contentType: "image/jpeg", byteLength: parsed.data.byteLength }, feedbackScreenshots.uploadSeconds);
       return c.json({
         uploadId: reservation.id,
         method: "PUT",
         url: ticket.url,
         headers: ticket.headers,
-        expiresAt: new Date(reservation.createdAt.getTime() + SCREENSHOT_UPLOAD_SECONDS * 1_000).toISOString(),
+        expiresAt: new Date(reservation.createdAt.getTime() + feedbackScreenshots.uploadSeconds * 1_000).toISOString(),
       }, 201);
     })
     .post("/api/app/feedback", async (c) => {
@@ -225,12 +218,9 @@ export function createAppClientApp(overrides: Partial<AppClientDependencies> = {
           const upload = await dependencies.claimableScreenshot(body.screenshotUploadId, body.installationId);
           if (!upload) return c.json(invalid("screenshotUploadId"), 400);
           // What is in R2 is what was reserved: present, the same size, a JPEG.
-          const stored = await storage.head(upload.objectKey);
-          if (!stored || stored.size !== upload.byteLength || stored.size > FEEDBACK_LIMITS.screenshotBytes) {
+          if (!await storedAsReserved(storage, feedbackScreenshots, upload.objectKey, { contentType: "image/jpeg", byteLength: upload.byteLength })) {
             return c.json(invalid("screenshotUploadId"), 400);
           }
-          const prefix = await storage.readPrefix(upload.objectKey, 3);
-          if (!prefix || !isJpeg(prefix)) return c.json(invalid("screenshotUploadId"), 400);
         } catch (error) {
           captureRequestError(error, { operation: "app_feedback_screenshot_check" });
           return c.json({ error: "unavailable" }, 503);
@@ -271,23 +261,3 @@ export function createAppClientApp(overrides: Partial<AppClientDependencies> = {
 }
 
 export const appClientApp = createAppClientApp();
-
-/**
- * Screenshots that should no longer exist are deleted hourly, on a timer of
- * their own, so an account deletion is honoured within the hour even when no
- * new feedback arrives. Several instances may run it; deleting twice is harmless.
- */
-export function startFeedbackScreenshotCleanup(
-  purge: () => Promise<{ deleted: number; failed: number }> = purgeFeedbackScreenshots,
-) {
-  const run = () => {
-    void purge().then((result) => {
-      if (result.failed > 0) logWarn("app_feedback_screenshot_purge_incomplete", result);
-    }).catch((error) => captureRequestError(error, { operation: "app_feedback_screenshot_purge" }));
-  };
-  const first = setTimeout(run, 60_000);
-  const every = setInterval(run, 3_600_000);
-  first.unref?.();
-  every.unref?.();
-  return () => { clearTimeout(first); clearInterval(every); };
-}

@@ -3,7 +3,8 @@ import { z } from "zod";
 
 import { adminProcedure, router } from "../index";
 import { listAppFeedback, readAppFeedback, setAppFeedbackStatus } from "../app-feedback";
-import { SCREENSHOT_VIEW_SECONDS, feedbackScreenshotStorage } from "../feedback-screenshots";
+import { feedbackScreenshots } from "../app-feedback";
+import { objectStorage } from "../object-storage";
 
 const status = z.enum(["new", "done"]);
 
@@ -21,8 +22,8 @@ export const appFeedbackRouter = router({
     if (!feedback) throw new TRPCError({ code: "NOT_FOUND", message: "Feedback not found" });
     const { screenshotKey, ...rest } = feedback;
     // A short-lived link to the one object; the key and credentials stay here.
-    const screenshotUrl = screenshotKey && feedbackScreenshotStorage
-      ? await feedbackScreenshotStorage.presignDownload(screenshotKey, SCREENSHOT_VIEW_SECONDS)
+    const screenshotUrl = screenshotKey && objectStorage
+      ? await objectStorage.presignDownload(screenshotKey, feedbackScreenshots.viewSeconds)
       : null;
     return { ...rest, screenshotUrl, screenshotStored: screenshotKey !== null };
   }),

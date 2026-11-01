@@ -6,8 +6,7 @@
   "exports": {
     "./globals.css": "./src/styles/globals.css",
     "./lib/*": "./src/lib/*.ts",
-    "./components/*": "./src/components/*.tsx",
-    "./postcss.config": "./postcss.config.mjs"
+    "./components/*": "./src/components/*.tsx"
   },
   "scripts": {
     "check-types": "tsc --noEmit"
@@ -28,7 +27,6 @@
   },
   "devDependencies": {
     "@northwind/config": "workspace:*",
-    "@tailwindcss/postcss": "^4.3.3",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "tailwindcss": "catalog:",

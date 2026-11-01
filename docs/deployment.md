@@ -14,7 +14,7 @@
 | Cloudflare Email Sending 发信域名与 token | 注册验证码（生产唯一必需的集成） |
 | LLM key（DeepSeek / OpenRouter / OpenAI 兼容） | 助手；缺失时 `/readyz` 为 not_ready |
 
-可选：Stripe（卡订阅）、PostHog（分析）、R2（反馈截图）、Google/GitHub/Apple 登录、App Store 内购。
+可选：Stripe（卡订阅）、PostHog（分析）、R2（上传，开启后跑 `bun run storage:cors --deploy`）、Google/GitHub/Apple 登录、App Store 内购。
 它们各自整组配置即开启，整组留空即关闭；想让某项缺失时拒绝发布，把它加入 `REQUIRED_INTEGRATIONS`。
 
 ## 1. 填写 `.env.dokploy.local`
@@ -56,8 +56,9 @@ bun run deploy:production # 检查本地 main、跑门禁、推送；然后跟�
 
 ## 5. 上线后
 
-1. 在 Web 注册账号，`bun run admin:lookup you@example.com`（指向生产库时）取得 user.id，
-   写入 `.env.dokploy.local` 的 `ADMIN_USER_IDS`，重跑 `deploy:provision` 后重新发布 server；也可在 Admin 授予 `admin` 角色。
+1. 第一个管理员：在 Web 注册并登录，浏览器打开 `https://<API 域名>/api/auth/get-session`，复制 `user.id`，
+   写入 `.env.dokploy.local` 的 `ADMIN_USER_IDS`，重跑 `bun run deploy:provision`，再在 GitHub Actions 重新运行最近一次 Deploy
+   （或推送一个提交）让 server 读到新变量。之后的管理员可以在 Admin → Users 里直接授予 `admin` 角色。
 2. Stripe：Workbench → Webhooks 添加 `https://<API 域名>/api/auth/stripe/webhook`，事件
    `checkout.session.completed`、`customer.subscription.created|updated|deleted`，签名密钥写入 `STRIPE_WEBHOOK_SECRET`。
 3. OAuth：各 provider 的回调为 `https://<API 域名>/api/auth/callback/{google|github|apple}`。

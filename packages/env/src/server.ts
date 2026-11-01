@@ -4,15 +4,12 @@ import { z } from "zod";
 
 import { platformServerSchema } from "./platform-server-schema";
 import { appStoreServerSchema } from "./app-store";
-import { operationalSettingsEnvSchema } from "./operational-settings";
-import { feedbackStorageEnvSchema } from "./feedback-storage";
+import { objectStorageEnvSchema } from "./object-storage";
 
 export const env = createEnv({
   server: {
     ...platformServerSchema,
     ...appStoreServerSchema,
-    // Legacy deployment values seed operations until the first Admin save.
-    ...operationalSettingsEnvSchema.shape,
     /**
      * Model-facing history budget. Mastra still persists the complete thread;
      * only the context sent to each model step is trimmed to this ceiling.
@@ -30,8 +27,8 @@ export const env = createEnv({
      * 通过已有的 Cloudflare 邮件配置发送。
      */
     FEEDBACK_NOTIFY_EMAIL: z.string().trim().email().optional(),
-    /** Feedback screenshots in Cloudflare R2; all or none (resolveFeedbackStorageConfig). */
-    ...feedbackStorageEnvSchema,
+    /** The object store for uploads; all or none (resolveObjectStorageConfig). */
+    ...objectStorageEnvSchema,
   },
   runtimeEnv: process.env,
   skipValidation: !!process.env.SKIP_ENV_VALIDATION,

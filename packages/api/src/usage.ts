@@ -2,11 +2,7 @@ import { createHash } from "node:crypto";
 
 import { rawQuery } from "@northwind/db";
 
-type UsageAction =
-  | "semantic_query"
-  | "investigation"
-  | "evidence_fetch"
-  | "assistant_run";
+type UsageAction = "assistant_run";
 
 type UsageInput = {
   subjectHash: string;
@@ -26,7 +22,7 @@ export type UsageReservation = {
   costUnits: number;
 };
 
-export type UsageSnapshot = {
+type UsageSnapshot = {
   used: number;
   remaining: number;
   resetAt: Date;
@@ -77,10 +73,6 @@ export async function reserveUsage(input: UsageInput): Promise<UsageReservation 
     bucketStartedAt: window.bucketStartedAt,
     costUnits: input.costUnits,
   };
-}
-
-export async function consumeUsage(input: UsageInput): Promise<boolean> {
-  return (await reserveUsage(input)) !== null;
 }
 
 export async function releaseUsage(reservation: UsageReservation): Promise<void> {

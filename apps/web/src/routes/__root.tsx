@@ -9,6 +9,7 @@ import {
   Scripts,
   createRootRouteWithContext,
   useLocation,
+  useMatches,
 } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 import type { TRPCOptionsProxy } from "@trpc/tanstack-react-query";
@@ -46,9 +47,11 @@ function securityHeaders(nonce?: string): Record<string, string> {
 
   if (import.meta.env.PROD && nonce) {
     const apiOrigin = new URL(env.VITE_SERVER_URL).origin;
-    // A production build pointed at a local HTTP API (end-to-end tests) also reads screenshots from the
-    // local S3 stand-in; deployed builds always use HTTPS origins, which `https:` already covers.
-    const localImages = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(apiOrigin) ? " http://localhost:* http://127.0.0.1:*" : "";
+    // A production build pointed at a local HTTP API (end-to-end tests) also uses the local S3 stand-in.
+    const localOrigins = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(apiOrigin) ? " http://localhost:* http://127.0.0.1:*" : "";
+    // Browser-direct uploads (docs/object-storage.md) go to the R2 account endpoint.
+    // shortcut: R2 only; another S3 provider needs its endpoint origin added here.
+    const storage = ` https://*.r2.cloudflarestorage.com${localOrigins}`;
     const analyticsOrigin = env.VITE_POSTHOG_PROJECT_TOKEN
       ? new URL(env.VITE_POSTHOG_HOST).origin
       : null;
@@ -56,9 +59,9 @@ function securityHeaders(nonce?: string): Record<string, string> {
       "default-src 'self'",
       `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`,
       "style-src 'self' 'unsafe-inline'",
-      `img-src 'self' data: blob: https:${localImages}`,
+      `img-src 'self' data: blob: https:${localOrigins}`,
       "font-src 'self' data:",
-      `connect-src 'self' ${apiOrigin}${analyticsOrigin ? ` ${analyticsOrigin}` : ""}`,
+      `connect-src 'self' ${apiOrigin}${storage}${analyticsOrigin ? ` ${analyticsOrigin}` : ""}`,
       "object-src 'none'",
       "base-uri 'self'",
       "form-action 'self'",
@@ -99,12 +102,12 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
         },
         {
           rel: "icon",
-          href: "/brand/northwind-icon.svg",
+          href: "/brand/icon.svg",
           type: "image/svg+xml",
         },
         {
           rel: "apple-touch-icon",
-          href: "/brand/northwind-icon-180.png",
+          href: "/brand/icon-180.png",
           sizes: "180x180",
         },
         {
@@ -161,13 +164,13 @@ function ShellOutlet() {
   const { initialUser } = Route.useLoaderData();
   const { user, sessionStatus } = useSessionUser(initialUser);
   const pathname = useLocation({ select: (location) => location.pathname });
+  // The signed-in and admin layouts render their own shell, for every page under them (product pages included).
+  const ownShell = useMatches({ select: (matches) => matches.some((match) => match.routeId === "/_auth" || match.routeId === "/admin") });
   const standalone =
+    ownShell ||
     pathname === "/login" ||
     pathname === "/privacy" ||
     pathname === "/terms" ||
-    pathname.startsWith("/account/") ||
-    pathname === "/admin" ||
-    pathname.startsWith("/admin/") ||
     isProductStandalonePath(pathname);
 
   return standalone ? (

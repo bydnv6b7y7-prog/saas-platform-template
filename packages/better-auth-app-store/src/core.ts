@@ -35,7 +35,7 @@ export function nextReconcileAt(snapshot: VerifiedSubscription | null, now: numb
 export function retryAt(attempts: number, now: number): Date {
   return new Date(now + Math.min(6 * HOUR, 60_000 * 2 ** Math.min(attempts, 12)));
 }
-export function isStale(row: SubscriptionRecord, now: number, interval = DEFAULT_RECONCILE_INTERVAL): boolean {
+function isStale(row: SubscriptionRecord, now: number, interval = DEFAULT_RECONCILE_INTERVAL): boolean {
   return !row.lastVerifiedAt || row.verificationFailedAt !== null || now - row.lastVerifiedAt.getTime() > interval * 2;
 }
 export function statusFor(rows: SubscriptionRecord[], env: AppStoreEnvironment, now: number, interval = DEFAULT_RECONCILE_INTERVAL): AppStoreStatus {

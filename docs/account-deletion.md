@@ -46,8 +46,8 @@ Order of operations in `deleteUserAccount(userId)`:
    subject hash (`sha256("<BETTER_AUTH_SECRET>:<userId>")` — duplicated
    locally in `account-deletion.ts` because `packages/auth` may not import
    `packages/api`; pinned by a fixed-vector unit test), then `DELETE FROM user`
-   — cascades `session`/`account`/market/story rows; sets `user_id` NULL on
-   `iap_account`/`iap_subscription`/`beta_invites`. Zero affected rows →
+   — cascades `session`/`account` rows; sets `user_id` NULL on
+   `iap_account`/`iap_subscription`/`stored_object`. Zero affected rows →
    `USER_NOT_FOUND` (concurrent deletion).
 6. **Confirmation email** after commit via the Cloudflare sender, stating what
    was deleted and the subscription behavior below.
@@ -58,8 +58,9 @@ Order of operations in `deleteUserAccount(userId)`:
 | --- | --- |
 | `user`, `session`, `account` | `subscription` (Stripe ledger; webhooks are authoritative) |
 | `verification` rows for the email | `iap_account` / `iap_subscription` rows — anonymized tombstones; `claimed_at` preserved (ownership rule) |
-| `semantic_queries`, `finding_interactions`, `saved_validations`, `share_links`, `change_story_feedback` | `iap_ownership_audit`, `iap_admin_action`, `rule_overrides`, `runtime_settings_audit`, `app_client_config_audit` (plain-text actor IDs) |
-| `usage_buckets` rows for the user's hash | `beta_invites` history (FKs set NULL) |
+| — | `iap_ownership_audit`, `iap_admin_action`, `runtime_settings_audit`, `app_client_config_audit` (plain-text actor IDs) |
+| `usage_buckets` rows for the user's hash | |
+| The user's uploads (`stored_object`): `user_id` set NULL, objects and rows deleted at the next hourly clean-up ([object storage](./object-storage.md)) | |
 | Mastra threads/messages/state/working memory | |
 | `app_feedback` sent while signed in; its R2 screenshot at the next hourly clean-up | `app_feedback` sent while signed out — never linked to an account ([app feedback](./app-feedback-rating.md)) |
 | PostHog person + events (when configured) | |
