@@ -1,10 +1,18 @@
+# Workspace manifests only, so the dependency layer below is rebuilt when dependencies change, not on every source edit.
+FROM node:24-slim AS manifests
+WORKDIR /src
+COPY . .
+RUN mkdir /out && cp package.json bun.lock bunfig.toml /out/ \
+  && for manifest in apps/*/package.json packages/*/package.json; do mkdir -p "/out/$(dirname "$manifest")" && cp "$manifest" "/out/$manifest"; done
+
 FROM node:24-slim AS builder
 COPY --from=oven/bun:1.4.4 /usr/local/bin/bun /usr/local/bin/bun
 WORKDIR /app
 ENV SKIP_ENV_VALIDATION=1
 
-COPY . .
+COPY --from=manifests /out/ ./
 RUN --mount=type=cache,target=/root/.bun/install/cache bun install --frozen-lockfile
+COPY . .
 
 ARG VITE_SERVER_URL
 ARG VITE_BRAND_NAME=Northwind
