@@ -1,17 +1,20 @@
-# 文档
+# Docs
 
-| 文档 | 内容 |
+**English** | [简体中文](README.zh-CN.md)
+
+| Doc | Contents |
 | --- | --- |
-| [部署](./deployment.md) | Dokploy + GitHub Actions：从空服务器到线上、备份、回滚 |
-| [配置](./configuration.md) | 变量归属、可选集成、项目身份、Admin 运行设置 |
-| [平台边界](./platform-template.md) | 业务代码放在哪里、平台只经由哪些入口触达业务 |
-| [邮箱验证](./email-verification.md) | 注册验证码、Cloudflare Email Sending |
-| [订阅](./subscriptions.md) | Stripe Checkout / Portal 与权益 |
-| [App Store 内购](./app-store-subscriptions.md) | StoreKit 2：App 身份、凭据、服务器通知与验收 |
-| [原生与 Web 登录](./native-ios-auth.md) | Google / GitHub / Apple、iOS 原生登录 |
-| [AI 助手](./ai-assistant.md) | Mastra + CopilotKit 运行骨架、额度、记忆 |
-| [分析](./analytics.md) | PostHog、区域化同意、服务端转化事件 |
-| [反馈与评分](./app-feedback-rating.md) | iOS App 远程设置、反馈与 R2 截图 |
-| [账号删除](./account-deletion.md) | 删除流程与保留记录 |
+| [Deployment](./deployment.md) | Dokploy + GitHub Actions: from an empty server to production, backups, rollback |
+| [Configuration](./configuration.md) | Variable ownership, optional integrations, project identity, Admin runtime settings |
+| [Platform boundary](./platform-template.md) | Where product code goes, and the only entries through which the platform reaches it |
+| [Email verification](./email-verification.md) | Sign-up verification codes, Cloudflare Email Sending |
+| [Subscriptions](./subscriptions.md) | Stripe Checkout / Portal and entitlements |
+| [App Store in-app purchases](./app-store-subscriptions.md) | StoreKit 2: App identity, credentials, server notifications and acceptance |
+| [Native and Web sign-in](./native-ios-auth.md) | Google / GitHub / Apple, native iOS sign-in |
+| [AI assistant](./ai-assistant.md) | Mastra + CopilotKit runtime skeleton, quotas, memory |
+| [Analytics](./analytics.md) | PostHog, region-aware consent, server-side conversion events |
+| [Object storage](./object-storage.md) | Upload purposes, quotas, browser-direct CORS, cleanup |
+| [Feedback and rating](./app-feedback-rating.md) | iOS App remote settings, feedback and R2 screenshots |
+| [Account deletion](./account-deletion.md) | Deletion flow and retained records |
 
-部分平台文档写于原产品时期，示例里可能提到原产品的页面；接口合同与约束适用于本模板。
+Some platform docs were written during the original product's era, and their examples may mention the original product's pages; the interface contracts and constraints apply to this template.

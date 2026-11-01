@@ -1,5 +1,7 @@
 # Account deletion
 
+**English** | [简体中文](account-deletion.zh-CN.md)
+
 Updated: 2026-09-16. Implements App Store guideline 5.1.1(v): an app that
 supports account creation must let people delete their account.
 

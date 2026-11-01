@@ -1,5 +1,7 @@
 # Email verification
 
+**English** | [简体中文](email-verification.zh-CN.md)
+
 Updated: 2026-09-12. Better Auth stays pinned to 1.7.2.
 
 ## Contract

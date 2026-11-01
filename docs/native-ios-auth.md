@@ -1,5 +1,7 @@
 # Native iOS authentication
 
+**English** | [简体中文](native-ios-auth.zh-CN.md)
+
 Updated: 2026-09-13. Better Auth remains pinned to 1.7.2. Historical validation sections retain the configuration used on their recorded dates.
 
 ## Invariants
@@ -61,7 +63,7 @@ Provider groups remain disabled when absent and reject partial credentials. Mere
 
 The existing email signup hook records `user_signed_up` with the server user ID when PostHog is configured. The direct native `/sign-in/social` flow is not currently classified by that hook. A native SDK opt-out does not disable server-side analytics. Existing Stripe customer hooks and session IP/user-agent storage still apply to the shared service; the iOS privacy disclosure must include these server behaviors.
 
-The Dokploy provisioner forwards the optional Google native audience only with a complete parent provider group, validates single-line values, and places it in the API environment. Apple identity comes from the shared catalog. The App Store configuration controls and distinct In-App Purchase credentials are documented in [the billing configuration contract](./app-store-subscriptions.md#11-配置发布与运行观察); they do not replace Sign in with Apple credentials. This configuration governance change does not provision or deploy any service.
+The Dokploy provisioner forwards the optional Google native audience only with a complete parent provider group, validates single-line values, and places it in the API environment. Apple identity comes from the shared catalog. The App Store configuration controls and distinct In-App Purchase credentials are documented in [the billing configuration contract](./app-store-subscriptions.md); they do not replace Sign in with Apple credentials. This configuration governance change does not provision or deploy any service.
 
 ## Local development
 
