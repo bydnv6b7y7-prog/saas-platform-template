@@ -1,5 +1,6 @@
 {
   "scope": "@northwind",
   "brand": "Northwind",
-  "domain": "northwind.dev"
+  "domain": "northwind.dev",
+  "examples": true
 }
