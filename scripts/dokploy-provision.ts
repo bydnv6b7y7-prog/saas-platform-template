@@ -211,7 +211,7 @@ function loadServerEnv(): Record<string, string> {
     const raw = readFileSync(new URL("../apps/server/.env", import.meta.url).pathname, "utf8");
     return dotenv.parse(raw);
   } catch {
-    console.warn("[provision] 未读到 apps/server/.env；生产密钥校验将拒绝继续");
+    console.log("[provision] 没有 apps/server/.env；只使用 .env.dokploy.local 中的值");
     return {};
   }
 }

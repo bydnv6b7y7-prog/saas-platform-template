@@ -91,7 +91,7 @@ export function AppStoreCopilotRuntime({
   const controls = useMemo<AssistantControlValue>(
     () => ({
       open,
-      error,
+      error: error ?? (usage.configured ? null : "The assistant is not set up yet: the server has no model key (run bun run doctor)."),
       activeThreadId: configuration.threadId,
       pageContext,
       phase,

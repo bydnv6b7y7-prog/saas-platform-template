@@ -172,7 +172,7 @@ export async function getAssistantUsage(
   userId: string,
   access: AssistantAccess,
   read: typeof readUsage = readUsage,
-): Promise<AssistantUsageStatus> {
+): Promise<Omit<AssistantUsageStatus, "configured">> {
   const subjectHash = privacyHash(userId, env.BETTER_AUTH_SECRET);
   const daily = await read({
     subjectHash,

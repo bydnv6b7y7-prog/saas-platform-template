@@ -2,6 +2,7 @@ import { auth } from "@northwind/auth";
 import { Hono } from "hono";
 
 import { captureRequestError } from "../logging";
+import { getCopilotModelStatus } from "../mastra/model";
 import {
   getAssistantAccess,
   getAssistantUsage,
@@ -13,12 +14,14 @@ type AssistantUsageDependencies = {
   getSession: (headers: Headers) => Promise<{ user: AssistantPrincipal } | null>;
   getAccess: (principal: AssistantPrincipal) => Promise<AssistantAccess>;
   getUsage: typeof getAssistantUsage;
+  isConfigured: () => boolean;
 };
 
 const defaultDependencies: AssistantUsageDependencies = {
   getSession: (headers) => auth.api.getSession({ headers }),
   getAccess: getAssistantAccess,
   getUsage: getAssistantUsage,
+  isConfigured: () => getCopilotModelStatus().configured,
 };
 
 export function createAssistantUsageApp(
@@ -36,7 +39,7 @@ export function createAssistantUsageApp(
         );
       }
       const access = await dependencies.getAccess(session.user);
-      return c.json(await dependencies.getUsage(session.user.id, access));
+      return c.json({ ...await dependencies.getUsage(session.user.id, access), configured: dependencies.isConfigured() });
     } catch (error) {
       captureRequestError(error, { operation: "assistant_usage" });
       return c.json(

@@ -181,7 +181,7 @@ export function createCopilotRuntimeApp(
 
     const modelStatus = dependencies.getModelStatus();
     if (!modelStatus.configured) {
-      return fail(503, "copilot_unconfigured", "The App Store assistant is not configured.");
+      return fail(503, "copilot_unconfigured", "The assistant is not configured.");
     }
 
     c.set("assistantUserId", userId);

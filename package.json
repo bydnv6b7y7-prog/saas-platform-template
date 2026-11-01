@@ -48,7 +48,7 @@
     "db:push": "turbo run db:push -F @northwind/db",
     "db:studio": "turbo run db:studio -F @northwind/db",
     "db:generate": "turbo run db:generate -F @northwind/db",
-    "db:migrate": "turbo run db:migrate -F @northwind/db",
+    "db:migrate": "turbo run db:migrate -F @northwind/db && cd apps/server && bun run mastra:migrate",
     "db:start": "docker compose up -d postgres mailpit",
     "db:watch": "docker compose up postgres",
     "db:stop": "docker compose stop postgres",

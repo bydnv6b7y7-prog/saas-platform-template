@@ -147,7 +147,8 @@ function RootDocument() {
         {import.meta.env.DEV ? (
           <>
             <TanStackRouterDevtools position="bottom-left" />
-            <ReactQueryDevtools position="bottom" buttonPosition="bottom-right" />
+            {/* Bottom-right belongs to the assistant launcher. */}
+            <ReactQueryDevtools position="bottom" buttonPosition="top-left" />
           </>
         ) : null}
         <Scripts />

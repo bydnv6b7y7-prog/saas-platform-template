@@ -41,24 +41,37 @@
 ## 3. 导出模板
 
 ```bash
-bun run template:export -- ../my-template --scope @acme --brand Acme
-bun run template:check   # CI 同款：导出到 .template-check 并跑 check-types + test
+bun run template:export -- ../my-app --scope @acme --brand Acme --domain acme.com [--config template.json]
+bun run template:check                      # CI 同款：导出到 .template-check 并跑 check-types + test
+bun run template:update -- ../my-app        # 把平台的新提交以三方合并带给已导出的仓库
 ```
 
 导出脚本（`scripts/export-template.ts`）：
 
-1. 复制 `git ls-files` 中的平台文件，跳过上表四处业务位置、`docs/`、`infra/`、本仓库专属的发布脚本
-   （`deploy.yml`、Dokploy、`api-smoke.sh`、`deploy-production.sh`）和 IAP 开发隧道；
-2. 用 `template/starter/` 覆盖业务位置：首页、`example.hello` 路由、无工具的助手、占位隐私/条款与 README；
-3. 替换 workspace scope、品牌名（`Northwind` → `--brand`）和品牌资源文件名，移除 compose 中的采集 worker 与业务变量；
-4. `git init`、`bun install`，用 drizzle-kit 生成仅含平台表的基线迁移，并附上手写的 `mastra.ag_ui_*` 迁移，然后提交。
+1. 复制该提交里的平台文件，跳过上表四处业务位置、业务文档、`infra/`、IAP 开发隧道和导出/更新脚本本身；
+   发布链路（`deploy.yml`、Dokploy 供给、`deploy:github`、冒烟脚本、`.env.dokploy.example`）与平台文档一并导出；
+2. 用 `template/starter/` 覆盖业务位置：首页、`example.hello`、无工具的助手、占位法律页、部署与冒烟钩子、模板文档与 README；
+3. 写入项目身份：scope、品牌、域名（Web/API/邮件/PostHog 代理）、`apple-application.ts`（`--config` 的 `apple` 块，
+   缺省为占位 App 且 `APP_STORE_ENABLED=false`），模板发布策略默认 `REQUIRED_INTEGRATIONS=email`；
+4. 门禁：导出结果里残留本仓库身份（域名、Bundle ID、App ID、命名空间、本机路径等）、平台代码里的业务引用或死链时导出失败；
+5. `git init`、`bun install`，生成仅含平台表的基线迁移与手写的 `mastra.ag_ui_*` 迁移，记录 `.template.json` 与 `.template-source` 后提交。
 
 `template/starter/` 是唯一需要随平台契约一起改的副本；CI 的 “Platform template stays buildable” 步骤会在它与平台不一致时失败。
+
+导出的仓库自带：`bun run doctor`（本地）/ `doctor --deploy`（发布前，逐项对真实服务做一次请求）、
+`bun run e2e`（生产构建 + compose 中的 PostgreSQL、Mailpit、S3 与 mock 模型，Playwright 走注册→验证码→助手→截图→Admin，
+配置 `E2E_STRIPE_*` 测试密钥时含 Stripe Checkout；CI 单独一个 job），以及三步上线
+`deploy:provision` → `deploy:github --apply` → `deploy:production`（见模板的 `docs/deployment.md`）。
+
+`template:update` 用派生仓库自己的答案分别导出它的源提交与新提交，把两者之差以 `git apply --3way` 应用过去：
+业务代码与本地修改保留，真正的重叠变成普通冲突标记；不提交，平台 schema 变化时提示 `db:generate`。
 
 ## 4. 已知的剩余混合
 
 - `packages/db/scripts/migrate-production.ts` 保留了本仓库从 `db:push` 迁到迁移序列时的一次性基线逻辑；在新库上是空操作。
 - 平台内部标识仍带 `northwind` 前缀（Mastra storage id、侧栏 DOM id、日志字段）；本仓库保留以免影响已持久化状态，导出时替换。
+- 迁移 `0020_runtime_settings` 只复制、不删除 `operational_settings(_audit)`；本次发布完成后用一条后续迁移删除这两张表。
+- 随模板导出的部分平台文档写于本产品时期，示例中仍可能提到榜单等页面（接口合同适用）。
 
 ## 5. 订阅模板约束
 

@@ -9,6 +9,7 @@ describe("assistant quota presentation", () => {
         plan: "free",
         accessSource: "free",
         historyEnabled: true,
+    configured: true,
         limits: { per5Minutes: 5, perDay: 5 },
         daily: {
           used: 4,
@@ -25,6 +26,7 @@ describe("assistant quota presentation", () => {
         plan: "pro",
         accessSource: "admin",
         historyEnabled: true,
+    configured: true,
         limits: { per5Minutes: 10, perDay: 100 },
         daily: {
           used: 2,

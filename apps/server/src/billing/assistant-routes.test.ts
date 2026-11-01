@@ -23,6 +23,7 @@ describe("assistant usage route", () => {
   test("returns the safe free-plan quota projection", async () => {
     const access = assistantAccessForPlan("free", limits);
     const app = createAssistantUsageApp({
+      isConfigured: () => false,
       getSession: async () => ({ user: { id: "user-private" } }),
       getAccess: async (principal) => {
         expect(principal).toEqual({ id: "user-private" });
@@ -53,6 +54,7 @@ describe("assistant usage route", () => {
       plan: "free",
       accessSource: "free",
       historyEnabled: true,
+      configured: false,
       limits: { per5Minutes: 5, perDay: 5 },
       daily: {
         used: 2,

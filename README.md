@@ -30,14 +30,21 @@ The starter product is deliberately tiny: a home page, an `example.hello` proced
 Requirements: Bun 1.4.4 and Docker.
 
 ```bash
-cp apps/server/.env.example apps/server/.env   # set BETTER_AUTH_SECRET (openssl rand -base64 32) and an LLM key
+cp apps/server/.env.example apps/server/.env   # set BETTER_AUTH_SECRET (openssl rand -base64 32)
 cp apps/web/.env.example apps/web/.env
 bun install
 bun run db:start          # PostgreSQL 18 + Mailpit (sign-up codes at http://localhost:8025)
-bun run db:migrate        # platform baseline + your product migrations
+bun run db:migrate        # platform baseline, your product migrations and the assistant's storage
 bun run doctor            # checks every setting against the real service and says what to do next
 bun run dev               # web http://localhost:3001, API http://localhost:3000
 ```
+
+- Everything except the assistant works without a model key; add `DEEPSEEK_API_KEY` (or another provider, see
+  [AI assistant](docs/ai-assistant.md)) to switch it on.
+- Ports taken by something else? `POSTGRES_PORT=5440 MAILPIT_PORT=8026 bun run db:start` and update `DATABASE_URL` /
+  `EMAIL_DEV_MAILPIT_URL`; for the API set `PORT` (and `BETTER_AUTH_URL`, plus `VITE_SERVER_URL` and `SERVER_URL` in
+  `apps/web/.env`). `bun run doctor` reports busy ports; `bun run dev:kill` only stops this checkout's own servers.
+- `.env` files are read at start: restart `bun run dev` after editing them (for example after adding yourself to `ADMIN_USER_IDS`).
 
 Stripe, OAuth providers, R2 and PostHog each switch on when their complete variable group is set
 ([configuration](docs/configuration.md)). App Store in-app purchases stay off (`APP_STORE_ENABLED=false`) until

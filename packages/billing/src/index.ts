@@ -15,6 +15,8 @@ export const assistantUsageStatusSchema = z.object({
   accessSource: z.enum(accessSources).default("free"),
   // Kept for already-loaded clients during a rolling deploy. History is not an entitlement.
   historyEnabled: z.boolean(),
+  /** False while no model provider key is set; the assistant says so instead of failing silently. */
+  configured: z.boolean().default(true),
   limits: z.object({
     per5Minutes: z.number().int().positive(),
     perDay: z.number().int().positive(),

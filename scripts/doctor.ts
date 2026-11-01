@@ -141,11 +141,11 @@ async function storageChecks(env: Record<string, string | undefined>, section: s
   }
 }
 
-async function modelChecks(env: Record<string, string | undefined>, section: string): Promise<Check[]> {
+async function modelChecks(env: Record<string, string | undefined>, section: string, required = true): Promise<Check[]> {
   const provider = env.COPILOT_MODEL_PROVIDER?.trim() || "openai-compatible";
   const key = provider === "deepseek" ? env.DEEPSEEK_API_KEY : provider === "openrouter" ? env.OPENROUTER_API_KEY : env.LLM_API_KEY;
   if (!key?.trim()) {
-    return [{ section, name: "AI assistant", status: "fail", detail: `${provider} has no API key: /readyz stays not_ready and the assistant is off`,
+    return [{ section, name: "AI assistant", status: required ? "fail" : "warn", detail: `${provider} has no API key: everything else works, the assistant says it is not set up and /readyz stays not_ready`,
       next: provider === "deepseek" ? "set DEEPSEEK_API_KEY" : provider === "openrouter" ? "set OPENROUTER_API_KEY" : "set LLM_API_KEY (and LLM_BASE_URL + LLM_MODEL for another host)" }];
   }
   const url = provider === "deepseek" ? "https://api.deepseek.com/models"
@@ -187,7 +187,7 @@ function configurationChecks(env: Record<string, string | undefined>, section: s
       : { section, name: "Analytics (PostHog)", status: "fail", detail: "POSTHOG_PROJECT_TOKEN is not a project token (phc_…)" });
   checks.push(env.ADMIN_USER_IDS?.trim()
     ? { section, name: "Admin access", status: "ok", detail: `${env.ADMIN_USER_IDS.split(",").filter(Boolean).length} bootstrap administrator(s)` }
-    : { section, name: "Admin access", status: "warn", detail: "no administrator yet", next: "sign up, then bun run admin:lookup you@example.com and put the id in ADMIN_USER_IDS" });
+    : { section, name: "Admin access", status: "warn", detail: "no administrator yet", next: "sign up, then bun run admin:lookup you@example.com, put the id in ADMIN_USER_IDS and restart bun run dev (.env is read at start)" });
   const secret = env.BETTER_AUTH_SECRET?.trim() ?? "";
   checks.push(secret.length >= 32 && !/replace-with/.test(secret)
     ? { section, name: "BETTER_AUTH_SECRET", status: "ok", detail: "set" }
@@ -221,7 +221,9 @@ async function localChecks(): Promise<Check[]> {
     const sql = new Bun.SQL(server.DATABASE_URL!);
     const [{ applied }] = await sql`SELECT count(*)::int AS applied FROM drizzle.__drizzle_migrations`.catch(() => [{ applied: 0 }]);
     const journal = JSON.parse(await Bun.file(root + "packages/db/src/migrations/meta/_journal.json").text()).entries.length;
+    const [{ mastra }] = await sql`SELECT to_regclass('mastra.mastra_ai_spans') IS NOT NULL AS mastra`;
     await sql.close();
+    if (!mastra) checks.push({ section: db, name: "Assistant storage", status: "fail", detail: "the mastra schema is missing", next: "bun run db:migrate (it also runs the assistant storage migration)" });
     checks.push(applied >= journal
       ? { section: db, name: "PostgreSQL", status: "ok", detail: `${applied}/${journal} migrations applied` }
       : { section: db, name: "PostgreSQL", status: "fail", detail: `${applied}/${journal} migrations applied`, next: "bun run db:migrate" });
@@ -229,11 +231,18 @@ async function localChecks(): Promise<Check[]> {
     checks.push({ section: db, name: "PostgreSQL", status: "fail", detail: "cannot connect with DATABASE_URL", next: "bun run db:start" });
   }
 
+  for (const [name, port, key] of [["API", Number(server.PORT) || 3000, "PORT in apps/server/.env (then BETTER_AUTH_URL, and VITE_SERVER_URL + SERVER_URL in apps/web/.env)"], ["Web", 3001, "the web dev port is fixed at 3001"]] as const) {
+    const busy = await Bun.connect({ hostname: "127.0.0.1", port, socket: { data() {} } }).then((socket) => { socket.end(); return true; }, () => false);
+    checks.push(busy
+      ? { section: "Ports", name: `${name} ${port}`, status: "warn", detail: "already in use (fine if it is this app's dev server)", next: `stop the other program, or change ${key}` }
+      : { section: "Ports", name: `${name} ${port}`, status: "ok", detail: "free" });
+  }
+
   const section2 = "Integrations";
   checks.push(...await emailChecks(server, section2, false));
   checks.push(...await stripeChecks(server, section2, null, undefined, false));
   checks.push(...await storageChecks(server, section2));
-  checks.push(...await modelChecks(server, section2));
+  checks.push(...await modelChecks(server, section2, false));
   checks.push(...configurationChecks(server, section2, server.BETTER_AUTH_URL || "http://localhost:3000"));
   return checks;
 }
