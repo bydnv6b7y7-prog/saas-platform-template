@@ -111,7 +111,7 @@ only Stripe test keys, `production` only live keys.
 | First administrator | Sign up on the live site, open `https://<API domain>/api/auth/get-session`, copy `user.id` into `ADMIN_USER_IDS` in `.env.dokploy.local`, run `bun run deploy:provision`, then re-run the latest Deploy workflow. Later admins can be granted the `admin` role in Admin → Users |
 | Brand and legal pages | Replace `VITE_BRAND_NAME`, the artwork in `apps/web/public/brand/`, and the placeholder privacy policy and terms in `apps/web/src/routes/(product)/` |
 | Search indexing | After the legal pages are final, set the GitHub variable `PRODUCTION_ENABLE_INDEXING` to `true` and release again |
-| Backups | In Dokploy, schedule `scripts/backup-postgres.sh` with the backup image (an [age](https://age-encryption.org) public key and an S3 bucket), keep the private key offline, and run `scripts/restore-verify.sh` regularly. See [Deployment](docs/deployment.md#备份与恢复) |
+| Backups | In Dokploy, schedule `scripts/backup-postgres.sh` with the backup image (an [age](https://age-encryption.org) public key and an S3 bucket), keep the private key offline, and run `scripts/restore-verify.sh` regularly. See [Deployment](docs/deployment.md#backups-and-restore) |
 | Changing server variables | Edit `.env.dokploy.local`, run `bun run deploy:provision`, then redeploy (re-run the workflow or merge a change) |
 
 ### Day to day
@@ -158,7 +158,7 @@ platform's changes here as a three-way merge, so your product code is never over
 
 ## Documentation
 
-The guides in [`docs/`](docs/README.md) are written in Chinese.
+Every guide in [`docs/`](docs/README.md) has an English version (`name.md`) and a Chinese one (`name.zh-CN.md`).
 
 | Guide | Covers |
 | --- | --- |

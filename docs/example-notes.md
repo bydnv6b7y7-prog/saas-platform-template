@@ -1,5 +1,7 @@
 # Example: My notes
 
+**English** | [简体中文](example-notes.zh-CN.md)
+
 A small, complete feature built only on platform pieces, meant to be read and then replaced.
 
 | Platform piece | Where the example uses it |
@@ -21,7 +23,7 @@ Browser uploads need the bucket's CORS rules: `bun run storage:cors` (local) or 
 
 1. Delete `packages/product/src/notes.ts`, `packages/product/src/routers/notes.ts`, `packages/product/src/schema/notes.ts`,
    `apps/web/src/product/notes/`, `apps/web/src/routes/_auth/(product)/notes.tsx`,
-   `apps/web/src/routes/admin/(product)/notes.tsx` and this file.
+   `apps/web/src/routes/admin/(product)/notes.tsx`, this file and its Chinese copy `example-notes.zh-CN.md`.
 2. Run `bun run check-types`; each error points at a line that wires the example in (router, schema index, assistant
    contracts and tools, navigation, admin tab, suggestions, `e2e.ts`). Remove those lines, and the `note_created`
    event in `apps/web/src/product/analytics.ts`.

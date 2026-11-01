@@ -1,87 +1,89 @@
-# 部署：从空服务器到线上
+# Deployment: from an empty server to production
 
-目标：一台装好 [Dokploy](https://dokploy.com) 的服务器、一个 GitHub 仓库、两个域名，三条命令上线。
-每一步都可以用 `bun run doctor --deploy` 检查，它会对每个外部服务做一次真实请求并给出下一步。
+**English** | [简体中文](deployment.zh-CN.md)
 
-## 0. 准备
+Goal: a server with [Dokploy](https://dokploy.com) installed, a GitHub repository, two domains, and three commands to go live.
+Every step can be checked with `bun run doctor --deploy`, which makes one real request to each external service and tells you the next step.
 
-| 需要 | 用途 |
+## 0. Prerequisites
+
+| Needed | Purpose |
 | --- | --- |
-| Dokploy 服务器与 API key（Settings → API/CLI） | 运行 PostgreSQL、迁移、API、Web |
-| 两个 DNS A 记录指向该服务器，例如 `app.example.com`、`api.example.com` | Web 与 API；Dokploy 用 Let's Encrypt 签证书 |
-| GitHub 仓库 + `gh auth login` | Actions 构建镜像并按序发布 |
-| GitHub PAT（`read:packages`、`write:packages`） | 推送与拉取 `ghcr.io/<命名空间>/*` 镜像 |
-| Cloudflare Email Sending 发信域名与 token | 注册验证码（生产唯一必需的集成） |
-| LLM key（DeepSeek / OpenRouter / OpenAI 兼容） | 助手；缺失时 `/readyz` 为 not_ready |
+| A Dokploy server and API key (Settings → API/CLI) | Runs PostgreSQL, migrations, API, Web |
+| Two DNS A records pointing to that server, e.g. `app.example.com`, `api.example.com` | Web and API; Dokploy issues certificates with Let's Encrypt |
+| A GitHub repository + `gh auth login` | Actions builds the images and releases in order |
+| A GitHub PAT (`read:packages`, `write:packages`) | Pushing and pulling `ghcr.io/<namespace>/*` images |
+| A Cloudflare Email Sending sender domain and token | Sign-up verification codes (the only integration required in production) |
+| An LLM key (DeepSeek / OpenRouter / OpenAI-compatible) | The assistant; when missing, `/readyz` is not_ready |
 
-可选：Stripe（卡订阅）、PostHog（分析）、R2（上传，开启后跑 `bun run storage:cors --deploy`）、Google/GitHub/Apple 登录、App Store 内购。
-它们各自整组配置即开启，整组留空即关闭；想让某项缺失时拒绝发布，把它加入 `REQUIRED_INTEGRATIONS`。
+Optional: Stripe (card subscriptions), PostHog (analytics), R2 (uploads; once enabled, run `bun run storage:cors --deploy`), Google/GitHub/Apple sign-in, App Store in-app purchases.
+Each is enabled by configuring its whole group and disabled by leaving the whole group empty; to refuse a release when one is missing, add it to `REQUIRED_INTEGRATIONS`.
 
-## 1. 填写 `.env.dokploy.local`
+## 1. Fill in `.env.dokploy.local`
 
 ```bash
 cp .env.dokploy.example .env.dokploy.local
 ```
 
-按文件里的注释填写。`DEPLOY_STAGE=staging` 只接受 Stripe Test 密钥，`production` 只接受 Live 密钥。
-`BETTER_AUTH_SECRET` 与数据库密码留空，首次供给会生成并回写到该文件——**保管好它**，丢失会让已有会话与数据库连接失效。
+Fill it in following the comments in the file. `DEPLOY_STAGE=staging` accepts only Stripe Test keys, and `production` accepts only Live keys.
+Leave `BETTER_AUTH_SECRET` and the database password empty; the first provisioning generates them and writes them back to that file. **Keep it safe**: losing it invalidates existing sessions and database connections.
 
-## 2. 供给 Dokploy
+## 2. Provision Dokploy
 
 ```bash
 bun run deploy:provision
 ```
 
-幂等：建项目、PostgreSQL、`<项目>-migration`、`<项目>-server`、`<项目>-web`（产品在
-`packages/product/src/deployment.ts` 声明 worker 时再加一个），配置镜像、环境变量与域名，并把
-applicationId 回写 `.env.dokploy.local`。重复运行只补缺失配置；修改了 `.env.dokploy.local` 的服务端变量后重跑一次即可。
+Idempotent: creates the project, PostgreSQL, `<project>-migration`, `<project>-server`, `<project>-web` (plus one more when the product declares a worker in
+`packages/product/src/deployment.ts`), configures images, environment variables and domains, and writes the
+applicationIds back to `.env.dokploy.local`. Re-running only fills in missing configuration; after changing server variables in `.env.dokploy.local`, run it once more.
 
-## 3. 写入 GitHub Actions 配置
-
-```bash
-bun run deploy:github           # 预览
-bun run deploy:github --apply   # 写入 Secrets 与 Variables（不打印密钥）
-```
-
-## 4. 发布
+## 3. Write the GitHub Actions configuration
 
 ```bash
-bun run doctor --deploy   # 全部 ✓ 或 – 再继续
-bun run deploy:production # 检查本地 main、跑门禁、推送；然后跟踪工作流
+bun run deploy:github           # Preview
+bun run deploy:github --apply   # Write Secrets and Variables (does not print secrets)
 ```
 
-`.github/workflows/deploy.yml` 在 `main` 上：校验发布合同 → 类型检查、测试、构建、PostgreSQL 集成测试、
-空库迁移两次、SSR 冒烟 → 构建并推送镜像（按 Git SHA 固定）→ 依次部署 migration → server → web（→ worker），
-每一步等到新 SHA 生效 → 对线上域名跑 `scripts/api-smoke.sh` 与 `scripts/web-smoke.sh`。
+## 4. Release
 
-## 5. 上线后
+```bash
+bun run doctor --deploy   # Continue only when everything is ✓ or –
+bun run deploy:production # Check local main, run the gates, push; then follow the workflow
+```
 
-1. 第一个管理员：在 Web 注册并登录，浏览器打开 `https://<API 域名>/api/auth/get-session`，复制 `user.id`，
-   写入 `.env.dokploy.local` 的 `ADMIN_USER_IDS`，重跑 `bun run deploy:provision`，再在 GitHub Actions 重新运行最近一次 Deploy
-   （或推送一个提交）让 server 读到新变量。之后的管理员可以在 Admin → Users 里直接授予 `admin` 角色。
-2. Stripe：Workbench → Webhooks 添加 `https://<API 域名>/api/auth/stripe/webhook`，事件
-   `checkout.session.completed`、`customer.subscription.created|updated|deleted`，签名密钥写入 `STRIPE_WEBHOOK_SECRET`。
-3. OAuth：各 provider 的回调为 `https://<API 域名>/api/auth/callback/{google|github|apple}`。
-4. 收录：确认法律页面后，把 GitHub Variable `PRODUCTION_ENABLE_INDEXING` 改为 `true` 再发布。
+`.github/workflows/deploy.yml` on `main`: validate the release contract → type check, tests, build, PostgreSQL integration tests,
+migrate an empty database twice, SSR smoke test → build and push images (pinned by Git SHA) → deploy migration → server → web (→ worker) in order,
+waiting at each step until the new SHA is live → run `scripts/api-smoke.sh` and `scripts/web-smoke.sh` against the live domains.
 
-## 备份与恢复
+## 5. After launch
 
-`apps/backup/Dockerfile` 提供定时备份与恢复演练运行时（`scripts/backup-postgres.sh`、`scripts/restore-verify.sh`）：
-`pg_dump` 用 [age](https://age-encryption.org) 加密后上传到任意 S3 兼容存储，按日/周保留。
+1. First admin: sign up and sign in on the Web, open `https://<API domain>/api/auth/get-session` in the browser, copy `user.id`,
+   put it in `ADMIN_USER_IDS` in `.env.dokploy.local`, re-run `bun run deploy:provision`, then re-run the most recent Deploy in GitHub Actions
+   (or push a commit) so the server picks up the new variable. Later admins can be granted the `admin` role directly in Admin → Users.
+2. Stripe: in Workbench → Webhooks, add `https://<API domain>/api/auth/stripe/webhook` with the events
+   `checkout.session.completed`, `customer.subscription.created|updated|deleted`, and put the signing secret in `STRIPE_WEBHOOK_SECRET`.
+3. OAuth: each provider's callback is `https://<API domain>/api/auth/callback/{google|github|apple}`.
+4. Indexing: once the legal pages are confirmed, set the GitHub Variable `PRODUCTION_ENABLE_INDEXING` to `true` and release again.
 
-| 变量 | 含义 |
+## Backups and restore
+
+`apps/backup/Dockerfile` provides the runtime for scheduled backups and restore drills (`scripts/backup-postgres.sh`, `scripts/restore-verify.sh`):
+`pg_dump` is encrypted with [age](https://age-encryption.org) and uploaded to any S3-compatible storage, with daily/weekly retention.
+
+| Variable | Meaning |
 | --- | --- |
-| `DATABASE_URL` | 要备份的数据库 |
-| `BACKUP_AGE_RECIPIENT` | age 公钥；私钥离线保管 |
-| `BACKUP_S3_BUCKET` / `BACKUP_S3_ENDPOINT` / `BACKUP_S3_PREFIX` | 目标桶、端点、前缀 |
-| `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | 该桶的写入凭据 |
-| `BACKUP_DAILY_KEEP` / `BACKUP_WEEKLY_KEEP` | 保留份数 |
-| `BACKUP_AGE_IDENTITY_FILE`、`RESTORE_VERIFY_*` | 恢复演练：私钥文件与临时数据库 |
+| `DATABASE_URL` | The database to back up |
+| `BACKUP_AGE_RECIPIENT` | age public key; keep the private key offline |
+| `BACKUP_S3_BUCKET` / `BACKUP_S3_ENDPOINT` / `BACKUP_S3_PREFIX` | Target bucket, endpoint, prefix |
+| `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | Write credentials for that bucket |
+| `BACKUP_DAILY_KEEP` / `BACKUP_WEEKLY_KEEP` | Number of copies to keep |
+| `BACKUP_AGE_IDENTITY_FILE`, `RESTORE_VERIFY_*` | Restore drill: private key file and temporary database |
 
-在 Dokploy 用该镜像建一个定时任务（Schedules）运行 `scripts/backup-postgres.sh`，并定期运行 `scripts/restore-verify.sh`
-证明备份可恢复。
+In Dokploy, create a scheduled task (Schedules) with this image to run `scripts/backup-postgres.sh`, and regularly run `scripts/restore-verify.sh`
+to prove the backups can be restored.
 
-## 回滚
+## Rollback
 
-镜像按 Git SHA 不可变。回滚 = 在 GitHub Actions 对旧提交重新运行 Deploy，或 `git revert` 后推送 `main`。
-迁移只向前；需要撤销的 schema 改动写一条新的评审迁移。
+Images are immutable per Git SHA. Rolling back = re-running Deploy in GitHub Actions on an older commit, or `git revert` and then pushing `main`.
+Migrations only go forward; a schema change that needs undoing gets a new, reviewed migration.

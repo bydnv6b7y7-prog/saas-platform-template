@@ -1,5 +1,7 @@
 # PostHog analytics and attribution
 
+**English** | [简体中文](analytics.zh-CN.md)
+
 PostHog is the analytics destination for browser behavior, acquisition attribution, signup, and subscription conversion. Browser and server events use the same project token and the same Better Auth `user.id` after identification.
 
 ## Source-of-truth invariants

@@ -1,102 +1,104 @@
-# 订阅与 Stripe 运行手册
+# Subscriptions and Stripe Runbook
 
-> 状态：Current · 2026-08-30
-> 实现：Better Auth 1.7.2 官方 Stripe 插件 + Stripe Node 22.6.0 + Hosted Checkout/Portal。
+**English** | [简体中文](subscriptions.zh-CN.md)
 
-## 1. 权威边界
+> Status: Current · 2026-08-30
+> Implementation: the official Better Auth 1.7.2 Stripe plugin + Stripe Node 22.6.0 + Hosted Checkout/Portal.
 
-Stripe 是支付和订阅生命周期的外部权威，Better Auth 插件负责验证 Stripe Webhook 并把状态同步到
-PostgreSQL。应用只读这份 owner-scoped projection 判定权益，不在每个请求同步查询 Stripe，也不因浏览器
-返回 success URL 直接授权。
+## 1. Authority boundaries
 
-管理员权限是独立的应用访问来源，不是 Stripe 订阅。Better Auth Admin Plugin 识别的管理员直接获得
-Pro 产品额度，但仍受同一套 Pro 运行限额；应用不会伪造 subscription 记录，也不会要求付款。
+Stripe is the external authority for payments and the subscription lifecycle; the Better Auth plugin verifies Stripe webhooks and syncs the state into
+PostgreSQL. The app only reads this owner-scoped projection to decide entitlements; it does not query Stripe synchronously on every request, and it does not grant access just because the browser
+returned to the success URL.
 
-官方依据：
+Admin permissions are a separate source of app access, not a Stripe subscription. Admins recognized by the Better Auth Admin Plugin get
+the Pro product allowance directly, but are still subject to the same Pro runtime limits; the app does not fabricate a subscription record or ask for payment.
 
-- [Better Auth Admin plugin](https://better-auth.com/docs/plugins/admin)：管理员角色与 bootstrap user id；
-- [Better Auth Stripe plugin](https://better-auth.com/docs/plugins/stripe)：官方插件、客户端、schema、Webhook 和 Portal；
-- [Better Auth hooks](https://better-auth.com/docs/concepts/hooks) 与
-  [rate limiting](https://better-auth.com/docs/concepts/rate-limit)：服务端前置校验、endpoint 规则与扩容时共享存储；
-- [Stripe products and prices](https://docs.stripe.com/products-prices/how-products-and-prices-work)：Product/Price 的权威模型；
-- [Stripe subscriptions integration](https://docs.stripe.com/billing/subscriptions/build-subscriptions)：Hosted Checkout、Webhook provision 和 Portal；
-- [Stripe subscription webhooks](https://docs.stripe.com/billing/subscriptions/webhooks)：异步状态变化和访问控制；
-- [Stripe API keys](https://docs.stripe.com/keys)：secret/restricted key 只在服务端和 secret store 中使用；
-- [Stripe advanced fraud detection](https://docs.stripe.com/disputes/prevention/advanced-fraud-detection)：Hosted Checkout/Stripe.js 可能按风控加载 hCaptcha；
-- [Better Auth 1.7 upgrade](https://better-auth.com/docs/guides/1-7-upgrade-guide)：issuer/accountId 身份迁移与维护窗口要求。
+Official references:
 
-## 2. Stripe Dashboard 一次性配置
+- [Better Auth Admin plugin](https://better-auth.com/docs/plugins/admin): admin roles and the bootstrap user id;
+- [Better Auth Stripe plugin](https://better-auth.com/docs/plugins/stripe): the official plugin, client, schema, webhook and Portal;
+- [Better Auth hooks](https://better-auth.com/docs/concepts/hooks) and
+  [rate limiting](https://better-auth.com/docs/concepts/rate-limit): server-side pre-checks, endpoint rules, and shared storage when scaling out;
+- [Stripe products and prices](https://docs.stripe.com/products-prices/how-products-and-prices-work): the authoritative Product/Price model;
+- [Stripe subscriptions integration](https://docs.stripe.com/billing/subscriptions/build-subscriptions): Hosted Checkout, webhook provisioning and Portal;
+- [Stripe subscription webhooks](https://docs.stripe.com/billing/subscriptions/webhooks): asynchronous state changes and access control;
+- [Stripe API keys](https://docs.stripe.com/keys): secret/restricted keys are used only on the server and in a secret store;
+- [Stripe advanced fraud detection](https://docs.stripe.com/disputes/prevention/advanced-fraud-detection): Hosted Checkout/Stripe.js may load hCaptcha based on risk signals;
+- [Better Auth 1.7 upgrade](https://better-auth.com/docs/guides/1-7-upgrade-guide): issuer/accountId identity migration and maintenance window requirements.
 
-### Product 与 Price
+## 2. One-time Stripe Dashboard setup
 
-创建一个代表同一权益的 `Northwind Pro` Product，并在该 Product 下创建两个固定 recurring Price：
+### Product and Price
 
-| 环境变量 | Stripe interval | Better Auth plan |
+Create one `Northwind Pro` Product representing the single entitlement, and under that Product create two fixed recurring Prices:
+
+| Environment variable | Stripe interval | Better Auth plan |
 | --- | --- | --- |
 | `STRIPE_PRICE_PRO_MONTHLY` | month × 1 | `pro-monthly` |
 | `STRIPE_PRICE_PRO_YEARLY` | year × 1 | `pro-yearly` |
 
-两个 Price 必须 active、同 Product、使用 USD、固定正整数金额。服务启动后 catalog 会从 Stripe 读取并
-验证这些属性，前端不保存价格，也不会收到 Price ID。
+Both Prices must be active, on the same Product, in USD, with a fixed positive integer amount. After the service starts, the catalog reads these attributes from Stripe and
+validates them; the frontend does not store prices and never receives Price IDs.
 
-不要为同一权益的不同计费周期创建多个 Product。价格和周期是 Price 的属性；Product 表示卖的东西。
+Do not create multiple Products for different billing periods of the same entitlement. Price and period are attributes of a Price; a Product represents what is being sold.
 
-当前自助式包装只有两个权益层级：
+The current self-serve packaging has only two entitlement tiers:
 
-| 层级 | 价格 | 权益边界 |
+| Tier | Price | Entitlement boundary |
 | --- | --- | --- |
-| Free | $0 | 最新与历史榜单、数据新鲜度与覆盖率、私有会话历史，以及每天 5 次完整 Northwind AI 请求 |
-| Northwind Pro | $20/月或$200/年 | Free 全部能力，以及每天 100 次 Northwind AI 请求 |
+| Free | $0 | Latest and historical charts, data freshness and coverage, private conversation history, and 5 full Northwind AI requests per day |
+| Northwind Pro | $20/month or $200/year | Everything in Free, plus 100 Northwind AI requests per day |
 
-年付在界面按 `$16.67/month` 展示，同时必须明确标注 `$200 billed yearly` 和节省 17%。周付已停止
-销售；Stripe 中的旧 Price 保持 inactive，不再进入应用配置或新 Checkout。
+Yearly billing is shown in the UI as `$16.67/month`, and must also clearly state `$200 billed yearly` and the 17% saving. Weekly billing is no longer
+sold; the old Price in Stripe stays inactive and is no longer part of the app config or new Checkouts.
 
 ### Webhook
 
-创建 endpoint：
+Create the endpoint:
 
 ```text
 https://<API_DOMAIN>/api/auth/stripe/webhook
 ```
 
-至少订阅：
+Subscribe to at least:
 
 - `checkout.session.completed`
 - `customer.subscription.created`
 - `customer.subscription.updated`
 - `customer.subscription.deleted`
 
-把 endpoint 自己的 signing secret 保存为 `STRIPE_WEBHOOK_SECRET`。它不是 API key，测试和生产 endpoint
-各有独立 secret。签名验证和事件处理由 Better Auth 官方插件完成，不再编写第二套 Webhook handler。
+Save the endpoint's own signing secret as `STRIPE_WEBHOOK_SECRET`. It is not an API key, and the test and production endpoints
+each have their own secret. Signature verification and event handling are done by the official Better Auth plugin; no second webhook handler is written.
 
-本地 Sandbox 使用 Stripe CLI 转发同一组事件；`apps/server/.env` 中的 signing secret 必须来自当前 CLI
-profile。项目已提供入口：
+Local Sandbox uses the Stripe CLI to forward the same set of events; the signing secret in `apps/server/.env` must come from the current CLI
+profile. The project provides an entry point:
 
 ```sh
 bun run dev:stripe
 ```
 
-它将事件转发到 `http://localhost:3000/api/auth/stripe/webhook`。本地开发时需要与 `bun run dev` 同时运行。
+It forwards events to `http://localhost:3000/api/auth/stripe/webhook`. During local development it must run alongside `bun run dev`.
 
 ### Customer Portal
 
-分别在 Sandbox 与 Live mode 配置 Portal：品牌、invoice history、payment method update、cancel at period
-end，以及允许切换的月付和年付 Pro Price。应用只创建短期 Portal session，不复制账单管理 UI。
+Configure the Portal separately in Sandbox and Live mode: branding, invoice history, payment method update, cancel at period
+end, and the monthly and yearly Pro Prices that customers may switch between. The app only creates short-lived Portal sessions and does not replicate a billing management UI.
 
-Hosted Checkout 位于 `checkout.stripe.com`。Stripe 可能在该托管页加载 hCaptcha 作为高级欺诈
-信号；正常用户通常不会看到交互题，只有风控要求挑战时才在支付页出现。它不在 Northwind
-源码或 Stripe Dashboard 的独立设置菜单中，也不应另外集成或默认关闭。排障时在 Checkout
-页浏览器 Network 中筛选 `hcaptcha`，不要把自动化浏览器被挑战误判为应用故障。
+Hosted Checkout lives at `checkout.stripe.com`. Stripe may load hCaptcha on that hosted page as an advanced fraud
+signal; normal users usually see no interactive challenge, and one appears on the payment page only when risk controls require it. It is not in the Northwind
+source code or in a separate settings menu in the Stripe Dashboard, and it should not be integrated separately or turned off by default. When troubleshooting, filter for `hcaptcha` in the browser Network panel on the Checkout
+page, and do not mistake an automated browser being challenged for an app failure.
 
 ### Secret key
 
-优先创建 restricted key；当前 Stripe Dashboard 的最小权限为 Customers 写、Products 读、Prices 读、
-Subscriptions 写、Checkout Sessions 写、Customer Portal 写。Webhook 签名在本地验证，不给运行时密钥
-Webhook Endpoints 权限。若平台有稳定出口 IP，再增加 IP allowlist。定期轮换并检查 Stripe API logs。
+Prefer a restricted key; in the current Stripe Dashboard the minimum permissions are Customers write, Products read, Prices read,
+Subscriptions write, Checkout Sessions write, Customer Portal write. Webhook signatures are verified locally, so the runtime key does not get
+Webhook Endpoints permission. If the platform has a stable egress IP, add an IP allowlist as well. Rotate regularly and review the Stripe API logs.
 
-## 3. 服务端环境变量
+## 3. Server environment variables
 
-整组留空表示本地禁用；只填写一部分会在启动时 fail fast：
+Leaving the whole group empty disables it locally; filling in only some of them fails fast at startup:
 
 ```dotenv
 STRIPE_SECRET_KEY=rk_live_xxx
@@ -105,105 +107,105 @@ STRIPE_PRICE_PRO_MONTHLY=price_xxx
 STRIPE_PRICE_PRO_YEARLY=price_xxx
 ```
 
-生产值放在被 Git 忽略的 `.env.dokploy.local`（或同名进程环境变量），由供给脚本注入 Dokploy，仅进入 API
-容器；本地 `apps/server/.env` 永远保留 Sandbox 值。供给脚本会拒绝 test/claimable key，部署 smoke 还会
-再次检查 `/readyz` 的 `billing.livemode=true`，防止配置回退。当前使用 Hosted Checkout，因此浏览器不需要
-publishable key。
+Production values go in the Git-ignored `.env.dokploy.local` (or process environment variables of the same names), are injected into Dokploy by the provisioning script, and reach only the API
+container; the local `apps/server/.env` always keeps Sandbox values. The provisioning script rejects test/claimable keys, and the deployment smoke test
+also checks `billing.livemode=true` in `/readyz` again to prevent a config regression. Hosted Checkout is used, so the browser does not need a
+publishable key.
 
-首次从 Sandbox 切换到 Live 时，迁移 `0011_stripe_live_cutover` 只终结从未生成 Stripe Subscription、
-且与所属用户 Customer ID 精确匹配的废弃 Checkout 占位记录，同时清除该用户的旧 Sandbox Customer
-ID。已有 Stripe Subscription、其他用户和任何无法可靠识别的记录都不会被修改；之后 Better Auth 会在
-用户首次 Live Checkout 时创建新的 Live Customer。
+On the first switch from Sandbox to Live, migration `0011_stripe_live_cutover` only terminates abandoned Checkout placeholder records that never produced a Stripe Subscription
+and whose Customer ID exactly matches the owning user's, and at the same time clears that user's old Sandbox Customer
+ID. Existing Stripe Subscriptions, other users, and any record that cannot be reliably identified are left untouched; afterwards Better Auth creates a new Live Customer
+on the user's first Live Checkout.
 
-## 4. 状态与权益策略
+## 4. Status and entitlement policy
 
-| Stripe 状态 | Pro 权益 | 用户行动 | 是否允许新 Checkout |
+| Stripe status | Pro entitlement | User action | New Checkout allowed |
 | --- | --- | --- | --- |
-| `active`, `trialing` | 是 | 正常使用；可进 Portal | 否 |
-| `past_due`, `unpaid`, `paused`，或已有 Stripe Subscription ID 的 `incomplete` | 否 | 进入 Portal 修复 | 否 |
-| 尚未生成 Stripe Subscription ID 的本地 `incomplete` Checkout 占位 | 否 | 重新发起 Checkout | 是 |
-| 未知的非终止状态 | 否（fail closed） | 进入 Portal/人工检查 | 否 |
-| `canceled`, `incomplete_expired` | 否 | 可重新订阅 | 是 |
+| `active`, `trialing` | Yes | Normal use; can open Portal | No |
+| `past_due`, `unpaid`, `paused`, or `incomplete` that already has a Stripe Subscription ID | No | Fix it in Portal | No |
+| Local `incomplete` Checkout placeholder with no Stripe Subscription ID yet | No | Start Checkout again | Yes |
+| Unknown non-terminal status | No (fail closed) | Portal / manual check | No |
+| `canceled`, `incomplete_expired` | No | Can resubscribe | Yes |
 
-`cancel_at_period_end=true` 时 Stripe 状态在实际结束前仍为 active，因此权益持续到 `periodEnd`。Better
-Auth 会在最终 success URL 前使用中间跳转等待 Webhook projection；浏览器仍只触发重新读取，不自行写入
-或授予权限。
+When `cancel_at_period_end=true`, the Stripe status stays active until the actual end, so the entitlement lasts until `periodEnd`. Better
+Auth uses an intermediate redirect before the final success URL to wait for the webhook projection; the browser still only triggers a re-read and never writes
+or grants permissions itself.
 
-`GET /api/billing/status` 只按 Better Auth session 的 `user.id` 查询，不接受客户端 resource ID；响应不含
-Customer ID、Subscription ID、resourceId 或内部 metadata。若状态读取失败，Pricing 会禁用 Checkout，
-避免生成重复订阅。
+`GET /api/billing/status` queries only by the `user.id` of the Better Auth session and does not accept a client resource ID; the response does not include the
+Customer ID, Subscription ID, resourceId or internal metadata. If reading the status fails, Pricing disables Checkout
+to avoid creating duplicate subscriptions.
 
-AG-UI Runtime 会在服务端读取同一份订阅 projection，并把登录用户映射为 Free 或 Pro 额度；自定义
-assistant thread 接口对所有登录用户开放。权益来源按 `admin → subscription → free` 判定：管理员获得
-Pro 额度但不产生 Stripe subscription；订阅用户必须由 Webhook projection 的 `grantsAccess=true` 授权；
-其余用户使用 Free 额度。Free 默认最多 5 次运行/5 分钟、5 次运行/UTC 日，Pro 默认最多 10 次运行/5
-分钟、100 次运行/UTC 日。只有用户主动发起的 Agent Run 才会预留额度，失败或取消的运行会释放预留。
-计数写入现有 PostgreSQL `usage_buckets`，以不可逆用户哈希作为主体，跨实例一致，不依赖进程内计数。
+The AG-UI Runtime reads the same subscription projection on the server and maps the signed-in user to the Free or Pro allowance; the custom
+assistant thread endpoints are open to all signed-in users. The entitlement source is decided in the order `admin → subscription → free`: admins get
+the Pro allowance without creating a Stripe subscription; subscribers must be granted access by the webhook projection's `grantsAccess=true`;
+all other users use the Free allowance. By default Free allows at most 5 runs/5 minutes and 5 runs/UTC day, and Pro allows at most 10 runs/5
+minutes and 100 runs/UTC day. Only agent runs started by the user reserve allowance, and failed or cancelled runs release their reservation.
+Counts are written to the existing PostgreSQL `usage_buckets`, keyed by an irreversible user hash, consistent across instances, and not dependent on in-process counters.
 
-额度在 Admin → Settings（`/admin/config`）维护。每次新运行和用量查询读取同一份
-数据库配置，当前运行继续使用原额度快照；修改额度不清空已有用量。首次保存前兼容四项
-`ASSISTANT_*_RUN_LIMIT_*` 环境变量，缺省值来自共享合同。首次实际保存后全部额度由数据库接管。
+Allowances are maintained in Admin → Settings (`/admin/config`). Every new run and every usage query reads the same
+database config, while a run in progress keeps using its original allowance snapshot; changing an allowance does not clear existing usage. Before the first save, the four
+`ASSISTANT_*_RUN_LIMIT_*` environment variables are still honored, with defaults from the shared contract. After the first actual save, all allowances are owned by the database.
 
-配置快照与修改人、时间、版本和前后值审计使用新增迁移 `0013_operational_settings.sql`；
-用量计数继续复用 `usage_buckets`。默认值、并发保存与发布步骤见[配置与 Admin Settings](./configuration.md)。
+The config snapshot and its audit of editor, time, version, and before/after values use the new migration `0013_operational_settings.sql`;
+usage counts keep reusing `usage_buckets`. For defaults, concurrent saves, and release steps see [Configuration and Admin Settings](./configuration.md).
 
-Better Auth 的生产默认 rate limit 保持启用；创建 Checkout 与 Portal session 另外限制为每个来源每分钟
-10 次。`/subscription/upgrade` 还有服务端 before hook：只要本地仍有非终止订阅，就拒绝新 Checkout，
-管理员同样被拒绝新 Checkout，不能通过绕过前端制造重复订阅或无意义付费。已有真实订阅仍可进入 Portal
-取消，管理员产品访问不随该订阅结束。当前 Dokploy 是单个常驻 API 实例，因此沿用官方默认内存计数；横向
-扩容前必须改为 Better Auth 的 PostgreSQL 或共享 secondary storage。Webhook 不套用该自定义限流，避免
-阻断 Stripe 的合法重试。
+Better Auth's production default rate limit stays enabled; creating Checkout and Portal sessions is additionally limited to 10 per source per
+minute. `/subscription/upgrade` also has a server-side before hook: as long as a non-terminal subscription exists locally, a new Checkout is rejected,
+and admins are rejected for new Checkouts too, so duplicate subscriptions or pointless payments cannot be created by bypassing the frontend. An existing real subscription can still be cancelled in Portal,
+and an admin's product access does not end with that subscription. Dokploy currently runs a single long-lived API instance, so the official default in-memory counter is kept; before scaling
+out horizontally, it must be switched to Better Auth's PostgreSQL or shared secondary storage. Webhooks are not subject to this custom rate limit, so that Stripe's legitimate
+retries are not blocked.
 
-## 5. 数据库变更与发布
+## 5. Database changes and release
 
-管理员访问来源复用 Better Auth 现有 `role` / `ADMIN_USER_IDS` 与运行时投影，不新增表或字段，因此该策略
-本身不需要 `db:push` 或新 migration。以下迁移说明只适用于首次安装现有 Stripe 集成。
+The admin access source reuses Better Auth's existing `role` / `ADMIN_USER_IDS` and the runtime projection and adds no tables or fields, so this policy
+by itself needs neither `db:push` nor a new migration. The migration notes below apply only to a first-time install of the existing Stripe integration.
 
-本次必须使用：
+This release must use:
 
 ```sh
 bun run db:migrate
 ```
 
-不要使用 `bun db:push`：共享/生产数据库需要版本化、可评审、可重复的 SQL migration。
+Do not use `bun db:push`: shared/production databases need versioned, reviewable, repeatable SQL migrations.
 
-迁移 `0009_better_auth_stripe.sql` 同时完成：
+Migration `0009_better_auth_stripe.sql` does all of the following:
 
-- Better Auth 1.7 必需的 `account.issuer` backfill 和 `(issuer, accountId)` unique index；
-- `user.stripe_customer_id`；
-- Better Auth Stripe 官方 `subscription` 表和查询索引。
+- the `account.issuer` backfill and the `(issuer, accountId)` unique index required by Better Auth 1.7;
+- `user.stripe_customer_id`;
+- the official Better Auth Stripe `subscription` table and its query indexes.
 
-迁移 `0011_stripe_live_cutover.sql` 只处理 Sandbox → Live 的一次性遗留占位：它终结从未获得
-Stripe Subscription ID/周期状态、且 Customer ID 与 owner 精确一致的 `incomplete` 行，再清除
-同一 owner 的 Sandbox Customer ID。任何真实订阅、跨用户或语义不明确的行都保持不变。
+Migration `0011_stripe_live_cutover.sql` handles only the one-time leftover placeholders from Sandbox → Live: it terminates `incomplete` rows that never received a
+Stripe Subscription ID/period status and whose Customer ID exactly matches the owner, then clears
+that owner's Sandbox Customer ID. Any real subscription, cross-user row, or row with ambiguous meaning is left unchanged.
 
-上线前应备份 `user`/`account`，在维护窗口暂停登录写入，并先盘点：
+Before going live, back up `user`/`account`, pause sign-in writes during a maintenance window, and first take an inventory:
 
 ```sql
 SELECT provider_id, count(*) FROM account GROUP BY provider_id ORDER BY provider_id;
 ```
 
-迁移只认可本部署实际启用的 credential、Google、GitHub、Apple。存在其他 provider 会中止迁移，必须先
-根据可信 provider issuer 做显式映射并检查 collision，不能按邮箱合并用户。
+The migration only accepts credential, Google, GitHub and Apple, the providers this deployment actually enables. If any other provider exists the migration aborts; you must first
+create an explicit mapping based on the trusted provider issuer and check for collisions, and users must not be merged by email.
 
-## 6. Sandbox 回归与 Live 验收
+## 6. Sandbox regression and Live acceptance
 
-每次改变计费逻辑，都先在 Stripe Sandbox 完成：
+Every time billing logic changes, first complete the following in Stripe Sandbox:
 
-1. 新用户分别完成月付和年付 Checkout，Webhook 后显示正确金额、周期和 active 状态；
-2. 重复点击 Pricing 只进入 Billing/Portal，不生成第二个 Subscription；
-3. Portal 切换周期、更新卡、设置 period-end cancellation，状态经 Webhook 回写；
-4. 使用 Stripe 测试卡制造 payment failure，应用撤销权益、提示修复且禁止新 Checkout；
-5. 取消真正结束后可重新订阅；跨用户无法读取或管理另一个 Subscription；
-6. 重放 Webhook 不产生重复记录；签名错误返回失败；API 日志不出现 key、签名、Customer ID；
-7. `bun test`、`bun run check-types`、`bun run build`、空库 migration 和 migration idempotency 全部通过。
+1. A new user completes both a monthly and a yearly Checkout; after the webhook, the correct amount, period and active status are shown;
+2. Clicking Pricing repeatedly only leads to Billing/Portal and does not create a second Subscription;
+3. Switching period, updating the card, and setting period-end cancellation in Portal are all written back through webhooks;
+4. Use a Stripe test card to cause a payment failure; the app revokes the entitlement, prompts the user to fix it, and blocks new Checkouts;
+5. After a cancellation actually ends, the user can resubscribe; one user cannot read or manage another user's Subscription;
+6. Replaying webhooks creates no duplicate records; a bad signature returns a failure; API logs show no keys, signatures or Customer IDs;
+7. `bun test`, `bun run check-types`, `bun run build`, migration on an empty database, and migration idempotency all pass.
 
-Live 基线已于 2026-08-30 验证：生产 `/readyz` 报告 `billing.configured=true` 与
-`billing.livemode=true`；年付入口创建 Live `subscription` Checkout，金额为 USD 200/年；验收
-session 保持未支付并未授予权益。生产 smoke 固定要求 configured + Live，避免部署回退到 Sandbox。
+The Live baseline was verified on 2026-08-30: production `/readyz` reports `billing.configured=true` and
+`billing.livemode=true`; the yearly entry point creates a Live `subscription` Checkout for USD 200/year; the acceptance
+session was left unpaid and granted no entitlement. The production smoke test always requires configured + Live, to prevent a deployment from regressing to Sandbox.
 
-Live `Northwind Pro` Product 当前保存 Stripe tax code `txcd_10701400`（Website Information
-Services — Business Use）。商品 tax code 只是税务分类，不等于已经启用 automatic Stripe Tax。
-当前仍未自动开启 Stripe Tax、优惠码、trial、seat、删除用户时取消订阅或自建邮件催款。税务
-注册地与义务确认后，再按 [Stripe Tax for Checkout](https://docs.stripe.com/tax/checkout) 单独评审；
-不要用技术默认值替代税务决定。
+The Live `Northwind Pro` Product currently has Stripe tax code `txcd_10701400` (Website Information
+Services — Business Use). A product tax code is only a tax classification and does not mean automatic Stripe Tax is enabled.
+Stripe Tax, promotion codes, trials, seats, cancelling subscriptions when a user is deleted, and self-built dunning emails are still not turned on. Once the tax
+registration locations and obligations are confirmed, review it separately following [Stripe Tax for Checkout](https://docs.stripe.com/tax/checkout);
+do not let technical defaults stand in for a tax decision.

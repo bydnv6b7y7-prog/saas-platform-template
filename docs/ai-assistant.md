@@ -1,7 +1,9 @@
 # Mastra + CopilotKit assistant
 
-> 状态：Current（2026-09-01）
-> 该能力面向登录用户，并与暂停的 Market/Finding 批处理相互独立。
+**English** | [简体中文](ai-assistant.zh-CN.md)
+
+> Status: Current (2026-09-01)
+> This capability serves signed-in users and is independent of the paused Market/Finding batch jobs.
 
 ## Architecture
 

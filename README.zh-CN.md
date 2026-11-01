@@ -36,7 +36,7 @@
 
 除非模板以 `--no-examples` 导出（`.template.json` 中 `"examples": false`），它会带上 **我的笔记（My notes）**：
 一个同时用到所有平台能力的示例——按用户隔离的数据、直传对象存储的附件、Free / Pro 配额、带卡片的助手工具和
-保存前需确认的操作、Admin 页面、分析事件与 e2e 步骤。docs 目录中的 `example-notes.md` 说明了它的结构以及如何删除。
+保存前需确认的操作、Admin 页面、分析事件与 e2e 步骤。docs 目录中的 `example-notes.zh-CN.md` 说明了它的结构以及如何删除。
 
 ## 本地运行
 
@@ -53,7 +53,7 @@ bun run dev               # Web http://localhost:3001，API http://localhost:300
 ```
 
 - 除助手外，所有功能都不需要模型 key；在 `apps/server/.env` 加上 `DEEPSEEK_API_KEY`（或其他模型服务，见
-  [AI 助手](docs/ai-assistant.md)）即可开启助手。
+  [AI 助手](docs/ai-assistant.zh-CN.md)）即可开启助手。
 - 端口被占用？`POSTGRES_PORT=5440 MAILPIT_PORT=8026 bun run db:start` 并同步修改 `DATABASE_URL` / `EMAIL_DEV_MAILPIT_URL`；
   API 改 `PORT`（以及 `BETTER_AUTH_URL`，和 `apps/web/.env` 里的 `VITE_SERVER_URL`、`SERVER_URL`）。
   `bun run doctor` 会报告被占用的端口；`bun run dev:kill` 只停止本目录自己的服务。
@@ -92,11 +92,11 @@ bun run dev               # Web http://localhost:3001，API http://localhost:300
 
 | 集成 | 需要在服务商控制台完成的操作 | 详细说明 |
 | --- | --- | --- |
-| Stripe 订阅 | 创建 Pro 商品及月付、年付两个价格；添加 webhook `https://<API 域名>/api/auth/stripe/webhook`，事件为 `checkout.session.completed` 与 `customer.subscription.created / updated / deleted`；配置 Customer Portal（发票、支付方式、到期取消、在两个价格间切换）。测试模式和正式模式各做一遍 | [订阅](docs/subscriptions.md) |
-| 文件上传（R2） | 创建一个 bucket 和一个仅限该 bucket 的 Object Read & Write token；然后运行 `bun run storage:cors --deploy` 设置 bucket 的 CORS 规则（token 无权设置时，它会打印 JSON，粘贴到 bucket 设置里即可） | [对象存储](docs/object-storage.md) |
-| Google / GitHub / Apple 登录 | 创建 OAuth 应用；回调地址 `https://<API 域名>/api/auth/callback/{google,github,apple}`。Apple 网页登录还需要一个配置了你的域名和该回调地址的 Services ID | [登录](docs/native-ios-auth.md) |
-| PostHog | 创建项目；为服务端和浏览器设置项目 token；在 `packages/env/src/posthog-hosts.ts` 填写你的反向代理地址 | [分析](docs/analytics.md) |
-| App Store 订阅 | 在 `packages/env/src/apple-application.ts` 描述你的 App（Bundle ID、Apple ID、订阅组、商品）；创建 In-App Purchase 密钥；为 Production 与 Sandbox 设置服务器通知地址 `https://<API 域名>/api/auth/app-store/notifications`（V2）；在 Admin → Settings 发送一次测试通知 | [App Store](docs/app-store-subscriptions.md) |
+| Stripe 订阅 | 创建 Pro 商品及月付、年付两个价格；添加 webhook `https://<API 域名>/api/auth/stripe/webhook`，事件为 `checkout.session.completed` 与 `customer.subscription.created / updated / deleted`；配置 Customer Portal（发票、支付方式、到期取消、在两个价格间切换）。测试模式和正式模式各做一遍 | [订阅](docs/subscriptions.zh-CN.md) |
+| 文件上传（R2） | 创建一个 bucket 和一个仅限该 bucket 的 Object Read & Write token；然后运行 `bun run storage:cors --deploy` 设置 bucket 的 CORS 规则（token 无权设置时，它会打印 JSON，粘贴到 bucket 设置里即可） | [对象存储](docs/object-storage.zh-CN.md) |
+| Google / GitHub / Apple 登录 | 创建 OAuth 应用；回调地址 `https://<API 域名>/api/auth/callback/{google,github,apple}`。Apple 网页登录还需要一个配置了你的域名和该回调地址的 Services ID | [登录](docs/native-ios-auth.zh-CN.md) |
+| PostHog | 创建项目；为服务端和浏览器设置项目 token；在 `packages/env/src/posthog-hosts.ts` 填写你的反向代理地址 | [分析](docs/analytics.zh-CN.md) |
+| App Store 订阅 | 在 `packages/env/src/apple-application.ts` 描述你的 App（Bundle ID、Apple ID、订阅组、商品）；创建 In-App Purchase 密钥；为 Production 与 Sandbox 设置服务器通知地址 `https://<API 域名>/api/auth/app-store/notifications`（V2）；在 Admin → Settings 发送一次测试通知 | [App Store](docs/app-store-subscriptions.zh-CN.md) |
 
 想在某个集成缺失时拒绝发布，把它加入 `REQUIRED_INTEGRATIONS`。`DEPLOY_STAGE=staging` 只接受 Stripe 测试密钥，
 `production` 只接受正式密钥。
@@ -108,7 +108,7 @@ bun run dev               # Web http://localhost:3001，API http://localhost:300
 | 第一个管理员 | 在线上站点注册，打开 `https://<API 域名>/api/auth/get-session`，把 `user.id` 写入 `.env.dokploy.local` 的 `ADMIN_USER_IDS`，运行 `bun run deploy:provision`，再重新运行最近一次 Deploy 工作流。之后的管理员可在 Admin → Users 直接授予 `admin` 角色 |
 | 品牌与法律页面 | 替换 `VITE_BRAND_NAME`、`apps/web/public/brand/` 中的图形，以及 `apps/web/src/routes/(product)/` 中的占位隐私政策和服务条款 |
 | 搜索引擎收录 | 法律页面定稿后，把 GitHub 变量 `PRODUCTION_ENABLE_INDEXING` 改为 `true` 并重新发布 |
-| 备份 | 在 Dokploy 用 backup 镜像定时运行 `scripts/backup-postgres.sh`（需要一个 [age](https://age-encryption.org) 公钥和一个 S3 bucket），私钥离线保管，并定期运行 `scripts/restore-verify.sh`。见 [部署](docs/deployment.md#备份与恢复) |
+| 备份 | 在 Dokploy 用 backup 镜像定时运行 `scripts/backup-postgres.sh`（需要一个 [age](https://age-encryption.org) 公钥和一个 S3 bucket），私钥离线保管，并定期运行 `scripts/restore-verify.sh`。见 [部署](docs/deployment.zh-CN.md#备份与恢复) |
 | 修改服务端变量 | 编辑 `.env.dokploy.local`，运行 `bun run deploy:provision`，再重新部署（重跑工作流或合并一次改动） |
 
 ### 日常
@@ -122,7 +122,7 @@ bun run dev               # Web http://localhost:3001，API http://localhost:300
 
 ## 部署
 
-Dokploy + GitHub Actions，填好 `.env.dokploy.local` 后执行（[部署文档](docs/deployment.md)）：
+Dokploy + GitHub Actions，填好 `.env.dokploy.local` 后执行（[部署文档](docs/deployment.zh-CN.md)）：
 
 ```bash
 bun run doctor --deploy         # 每一行都是 ✓ 或 – 再继续
@@ -155,15 +155,15 @@ bun run deploy:production       # 推送 main；工作流负责构建、迁移�
 
 | 文档 | 内容 |
 | --- | --- |
-| [部署](docs/deployment.md) | 从空服务器到线上；备份；回滚 |
-| [配置](docs/configuration.md) | 所有变量、可选集成、管理后台运行设置 |
-| [平台边界](docs/platform-template.md) | 业务代码放在哪里 |
-| [邮箱验证](docs/email-verification.md) | 注册验证码、Cloudflare Email Sending |
-| [订阅](docs/subscriptions.md) | Stripe Checkout / Portal 与权益 |
-| [App Store 内购](docs/app-store-subscriptions.md) | StoreKit 2：App 身份、凭据、服务器通知 |
-| [登录](docs/native-ios-auth.md) | Google / GitHub / Apple、iOS 原生登录 |
-| [对象存储](docs/object-storage.md) | 上传用途、配额、CORS、清理 |
-| [AI 助手](docs/ai-assistant.md) | 运行骨架、额度、记忆 |
-| [分析](docs/analytics.md) | PostHog、区域化同意、服务端事件 |
-| [反馈与评分](docs/app-feedback-rating.md) | iOS 远程设置、带截图的反馈 |
-| [账号删除](docs/account-deletion.md) | 删除什么、保留什么 |
+| [部署](docs/deployment.zh-CN.md) | 从空服务器到线上；备份；回滚 |
+| [配置](docs/configuration.zh-CN.md) | 所有变量、可选集成、管理后台运行设置 |
+| [平台边界](docs/platform-template.zh-CN.md) | 业务代码放在哪里 |
+| [邮箱验证](docs/email-verification.zh-CN.md) | 注册验证码、Cloudflare Email Sending |
+| [订阅](docs/subscriptions.zh-CN.md) | Stripe Checkout / Portal 与权益 |
+| [App Store 内购](docs/app-store-subscriptions.zh-CN.md) | StoreKit 2：App 身份、凭据、服务器通知 |
+| [登录](docs/native-ios-auth.zh-CN.md) | Google / GitHub / Apple、iOS 原生登录 |
+| [对象存储](docs/object-storage.zh-CN.md) | 上传用途、配额、CORS、清理 |
+| [AI 助手](docs/ai-assistant.zh-CN.md) | 运行骨架、额度、记忆 |
+| [分析](docs/analytics.zh-CN.md) | PostHog、区域化同意、服务端事件 |
+| [反馈与评分](docs/app-feedback-rating.zh-CN.md) | iOS 远程设置、带截图的反馈 |
+| [账号删除](docs/account-deletion.zh-CN.md) | 删除什么、保留什么 |
