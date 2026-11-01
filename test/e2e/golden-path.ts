@@ -88,14 +88,23 @@ export async function runGoldenPath(config: GoldenPathConfig): Promise<StepResul
     // Before the Admin steps: administrators get Pro without a subscription and see no checkout button.
     await page.getByRole("button", { name: "Start Pro" }).click();
     await page.waitForURL(/checkout\.stripe\.com/, { timeout: 30_000 });
-    await page.locator("#cardNumber").fill("4242424242424242");
+    // With several payment methods enabled, Checkout shows card fields only after "Card" is chosen.
+    const cardNumber = page.locator("#cardNumber");
+    if (!await cardNumber.isVisible().catch(() => false)) {
+      // The accordion's button has no box (0×0), so it cannot be clicked by position; dispatch the click.
+      await page.locator("[data-testid='card-accordion-item-button']").dispatchEvent("click");
+    }
+    await cardNumber.fill("4242424242424242");
     await page.locator("#cardExpiry").fill("12 / 34");
     await page.locator("#cardCvc").fill("123");
     const name = page.locator("#billingName");
     if (await name.isVisible().catch(() => false)) await name.fill("E2E User");
     const postal = page.locator("#billingPostalCode");
     if (await postal.isVisible().catch(() => false)) await postal.fill("94103");
-    await page.locator("button[type=submit]").first().click();
+    // Link's "save my information" is pre-checked and would require a phone number.
+    const saveWithLink = page.getByRole("checkbox", { name: /Save my information/i });
+    if (await saveWithLink.isChecked().catch(() => false)) await saveWithLink.uncheck({ force: true });
+    await page.locator("[data-testid='hosted-payment-submit-button']").click();
     await page.waitForURL((url) => url.origin === new URL(config.webUrl).origin, { timeout: 60_000 });
     const deadline = Date.now() + 60_000;
     while (Date.now() < deadline) {

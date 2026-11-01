@@ -135,7 +135,7 @@ try {
         STRIPE_PRICE_PRO_MONTHLY: process.env.E2E_STRIPE_PRICE_PRO_MONTHLY!,
         STRIPE_PRICE_PRO_YEARLY: process.env.E2E_STRIPE_PRICE_PRO_YEARLY!,
       });
-      children.push(Bun.spawn(["stripe", "listen", "--api-key", key, "--forward-to", `${apiUrl}/api/auth/stripe/webhook`], { stdout: "ignore", stderr: Bun.file(`${artifacts}/stripe.log`) }));
+      children.push(Bun.spawn(["stripe", "listen", "--api-key", key, "--forward-to", `${apiUrl}/api/auth/stripe/webhook`], { stdout: Bun.file(`${artifacts}/stripe-events.log`), stderr: Bun.file(`${artifacts}/stripe.log`) }));
     });
   }
 
