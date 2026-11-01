@@ -11,6 +11,7 @@
 | [原生与 Web 登录](./native-ios-auth.md) | Google / GitHub / Apple、iOS 原生登录 |
 | [AI 助手](./ai-assistant.md) | Mastra + CopilotKit 运行骨架、额度、记忆 |
 | [分析](./analytics.md) | PostHog、区域化同意、服务端转化事件 |
+| [对象存储](./object-storage.md) | 上传用途、配额、浏览器直传 CORS、清理 |
 | [反馈与评分](./app-feedback-rating.md) | iOS App 远程设置、反馈与 R2 截图 |
 | [账号删除](./account-deletion.md) | 删除流程与保留记录 |
 
