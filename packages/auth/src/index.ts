@@ -50,6 +50,7 @@ export const enabledSocialProviderIds = socialAuth.enabledProviderIds;
 
 export const stripeBilling: StripeBillingService = createStripeBilling({
   NODE_ENV: env.NODE_ENV,
+  DEPLOY_STAGE: env.DEPLOY_STAGE,
   STRIPE_SECRET_KEY: env.STRIPE_SECRET_KEY,
   STRIPE_WEBHOOK_SECRET: env.STRIPE_WEBHOOK_SECRET,
   STRIPE_PRICE_PRO_MONTHLY: env.STRIPE_PRICE_PRO_MONTHLY,
