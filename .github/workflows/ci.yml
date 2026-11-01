@@ -76,6 +76,30 @@ jobs:
         env:
           SKIP_ENV_VALIDATION: "1"
           ADMIN_USERS_TEST_DATABASE_URL: postgresql://iap_test:iap_test_local_only@127.0.0.1:56432/northwind_admin_users_test
+      # Same suite as the release gate in deploy.yml, so a pull request cannot pass what a release rejects.
+      - name: Operational settings PostgreSQL integration tests
+        run: |
+          bun -e 'const url = new URL(process.env.OPS_TEST_DATABASE_URL); url.pathname = "/postgres"; const db = new Bun.SQL(url.href); await db.unsafe("CREATE DATABASE northwind_config_governance_test"); await db.close();'
+          bun test packages/api/src/operational-settings.integration.test.ts
+        env:
+          SKIP_ENV_VALIDATION: "1"
+          OPS_TEST_DATABASE_URL: postgresql://iap_test:iap_test_local_only@127.0.0.1:56432/northwind_config_governance_test
+      # Same suite as the release gate in deploy.yml, so a pull request cannot pass what a release rejects.
+      - name: App Store Admin PostgreSQL integration tests
+        run: |
+          bun -e 'const url = new URL(process.env.IAP_ADMIN_TEST_DATABASE_URL); url.pathname = "/postgres"; const db = new Bun.SQL(url.href); await db.unsafe("CREATE DATABASE northwind_iap_admin_test"); await db.close();'
+          bun test packages/api/src/app-store-admin.integration.test.ts
+        env:
+          SKIP_ENV_VALIDATION: "1"
+          IAP_ADMIN_TEST_DATABASE_URL: postgresql://iap_test:iap_test_local_only@127.0.0.1:56432/northwind_iap_admin_test
+      # Same suite as the release gate in deploy.yml, so a pull request cannot pass what a release rejects.
+      - name: App feedback PostgreSQL integration tests
+        run: |
+          bun -e 'const url = new URL(process.env.APP_FEEDBACK_TEST_DATABASE_URL); url.pathname = "/postgres"; const db = new Bun.SQL(url.href); await db.unsafe("CREATE DATABASE northwind_app_feedback_test"); await db.close();'
+          bun test apps/server/src/app-client/app-client.integration.test.ts
+        env:
+          SKIP_ENV_VALIDATION: "1"
+          APP_FEEDBACK_TEST_DATABASE_URL: postgresql://iap_test:iap_test_local_only@127.0.0.1:56432/northwind_app_feedback_test
       - name: Production build
         run: bun run build
         env:

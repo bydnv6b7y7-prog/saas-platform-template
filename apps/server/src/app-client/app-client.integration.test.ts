@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from "bun:test";
-import { APP_CLIENT_CONFIG_DEFAULTS, FEEDBACK_LIMITS, type AppClientConfig } from "@northwind/env/app-client-config";
+import { APP_CLIENT_CONFIG_DEFAULTS, FEEDBACK_CONTEXTS, FEEDBACK_LIMITS, type AppClientConfig } from "@northwind/env/app-client-config";
 import { mkdir } from "node:fs/promises";
 
 import type { Context } from "@northwind/api/context";
@@ -264,13 +264,13 @@ if (!url || process.env.APP_FEEDBACK_TEST_CHILD !== "1") {
       currentTest = "submit";
       const notified: string[] = [];
       const target = app({ notify: async (feedback) => { notified.push(feedback.id); } });
-      const response = await post(target, valid({ contact: "reader@example.com", context: "widgetNotUpdating" }));
+      const response = await post(target, valid({ contact: "reader@example.com", context: FEEDBACK_CONTEXTS[0] }));
       expect(response.status).toBe(201);
       expect(response.body).toEqual({ id: expect.any(String) });
       expect(notified).toEqual([response.body.id]);
       const detail = await admin().appFeedback.detail({ id: response.body.id });
       expect(detail).toMatchObject({
-        category: "bug", message: "组件没有更新到今天", contact: "reader@example.com", context: "widgetNotUpdating",
+        category: "bug", message: "组件没有更新到今天", contact: "reader@example.com", context: FEEDBACK_CONTEXTS[0],
         signedIn: false, status: "new", screenshotUrl: null, screenshotStored: false, screenshotExpired: false,
         diagnostics: { appVersion: "1.4.0", widgetFamilies: ["large"], pro: false },
       });
