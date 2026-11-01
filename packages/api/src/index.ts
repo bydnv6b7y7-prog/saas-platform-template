@@ -38,7 +38,7 @@ const requireSession = t.middleware(({ ctx, next }) => {
 
 export const protectedProcedure = publicProcedure.use(requireSession);
 
-export function assertAdminAccess(user: NonNullable<Context["session"]>["user"]): void {
+function assertAdminAccess(user: NonNullable<Context["session"]>["user"]): void {
   if (adminAccess.allows(user)) return;
   throw new TRPCError({
     code: "FORBIDDEN",

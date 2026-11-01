@@ -1,6 +1,6 @@
 # iOS app：反馈与评分
 
-状态：服务端已实现。iOS App 按本文件的接口合同读取远程设置、提交反馈与截图。
+状态：服务端与 App 均已实现 · 2026-09-28。iOS App 按本文件的接口合同读取远程设置、提交反馈与截图。
 
 ## 1. 要做什么
 
@@ -128,7 +128,7 @@ App 用返回的 `method`、`url`、`headers` 原样上传（链接 10 分钟有
 24. 删除账号只删了数据库行，R2 里留下截图。→ 账目对反馈是 `ON DELETE SET NULL`；已认领又失去反馈的对象在下一次清理删除。
 25. R2 暂时不可用。→ 申请上传不访问 R2（只签名），不受影响；提交时核对失败返回 503，App 保留内容可重试；清理失败的对象保留账目，下次重试。
 26. 本地或 CI 没有 R2 凭据。→ 截图功能整体关闭并通过配置告诉 App；集成测试用内存替身，另有只在提供凭据时运行的真实 R2 测试。
-27. 凭据写错导致每次都失败却没人发现。→ `/readyz` 报告 `feedbackStorage.configured`（不影响就绪）；真实 R2 测试覆盖签名、上传、核对、读取和删除。
+27. 凭据写错导致每次都失败却没人发现。→ `/readyz` 报告 `objectStorage.configured`（不影响就绪）；真实 R2 测试覆盖签名、上传、核对、读取和删除。
 11. 非管理员读取反馈或截图。→ 全部走 `adminProcedure`。
 12. `/readyz` 未检查新表，迁移遗漏时服务仍报就绪。→ 就绪检查加入四张新表。
 
@@ -160,5 +160,5 @@ App 用返回的 `method`、`url`、`headers` 原样上传（链接 10 分钟有
   cd apps/server && APP_FEEDBACK_R2_TEST=1 SKIP_ENV_VALIDATION=1 bun test src/app-client/r2-storage.integration.test.ts
   ```
 - 全链路（2026-09-29）：本机服务端（全新迁移的数据库、真实 R2）上，模拟器里的 App 附上一张 13.6 MB 的 3000×4000 图片提交反馈 → App 压缩为 1200×1600、893,778 字节的 JPEG → 申请上传 → 直传 R2 → 提交 → `app_feedback` 与已认领的 `app_feedback_screenshot` 行 → 管理员详情的 10 分钟签名链接取回同样 893,778 字节的 `image/jpeg`。
-- `scripts/api-smoke.sh` 增加：公开配置可读且带缓存头、非法反馈与非法上传申请 400、三个新管理接口未登录 401、`/readyz` 报告 `feedbackStorage`。
+- `scripts/api-smoke.sh` 增加：公开配置可读且带缓存头、非法反馈与非法上传申请 400、三个新管理接口未登录 401、`/readyz` 报告 `objectStorage`。
 - App：UI 测试用本地 HTTP 测试服务模拟两个接口，验证表单发出的请求体、失败重试、配置关闭时入口消失；评分通过分析事件日志断言「满足条件时请求了评分」「关闭后不再请求」。

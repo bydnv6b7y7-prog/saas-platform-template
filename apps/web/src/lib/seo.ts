@@ -79,16 +79,3 @@ export function createSeoHead({
   };
 }
 
-export function compactText(value: string): string {
-  return value.replace(/\s+/g, " ").trim();
-}
-
-export function truncateText(value: string, maxLength: number): string {
-  const characters = [...compactText(value)];
-  if (characters.length <= maxLength) return characters.join("");
-  return `${characters.slice(0, Math.max(1, maxLength - 1)).join("").trimEnd()}…`;
-}
-
-export function serializeJsonLd(value: Record<string, unknown>): string {
-  return JSON.stringify(value).replaceAll("<", "\\u003c");
-}

@@ -6,7 +6,7 @@ import { AssistantWelcomeContext, assistantWelcomeHeading } from "@/product/assi
 
 type WelcomeScreenProps = ComponentProps<typeof CopilotSidebarView.WelcomeScreen>;
 
-export function AppStoreWelcomeScreen({
+export function AssistantWelcomeScreen({
   input,
   suggestionView,
   className,

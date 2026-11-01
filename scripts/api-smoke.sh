@@ -30,7 +30,7 @@ printf '%s' "$invalid_feedback" | tail -n 1 | grep -qx '400'
 printf '%s' "$invalid_feedback" | grep -q '"field":"installationId"'
 invalid_upload="$(curl --silent --show-error --write-out '\n%{http_code}' -X POST -H 'content-type: application/json' --data '{"installationId":"not-a-uuid","byteLength":10}' "$BASE/api/app/feedback/uploads")"
 printf '%s' "$invalid_upload" | tail -n 1 | grep -qx '400'
-printf '%s' "$readiness" | grep -q '"feedbackStorage":{"configured":'
+printf '%s' "$readiness" | grep -q '"objectStorage":{"configured":'
 
 providers="$(curl --fail --silent --show-error "$BASE/api/auth/providers")"
 printf '%s' "$providers" | grep -q '"providers":\['

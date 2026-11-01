@@ -2,13 +2,37 @@
  * Server product seam. Platform code (index.ts, mastra/) imports only this module from ./product;
  * a new product replaces the whole directory and keeps these exports.
  */
-import { ASSISTANT_AGENT_ID } from "@northwind/product/assistant-contracts";
+import {
+  ASSISTANT_AGENT_ID,
+  LIST_NOTES_TOOL,
+  listNotesInputSchema,
+  listNotesResultSchema,
+  toListNotesResult,
+} from "@northwind/product/assistant-contracts";
+import { readNotes } from "@northwind/product/routers/notes";
 import { Agent } from "@mastra/core/agent";
+import { MASTRA_RESOURCE_ID_KEY } from "@mastra/core/request-context";
+import { createTool } from "@mastra/core/tools";
 import { Memory } from "@mastra/memory";
 
 import { assistantModel } from "../mastra/model";
 import { assistantRequestContextSchema } from "../mastra/request-context";
 import { mastraStorage } from "../mastra/storage";
+
+/** Example read-only tool: the signed-in user is the run's resource id, set by the server from the session. */
+const listNotes = createTool({
+  id: LIST_NOTES_TOOL.name,
+  description: LIST_NOTES_TOOL.description,
+  inputSchema: listNotesInputSchema,
+  outputSchema: listNotesResultSchema,
+  requestContextSchema: assistantRequestContextSchema,
+  mcp: { annotations: { title: "My notes", readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false } },
+  execute: async (input, context) => {
+    const userId = context.requestContext?.getRaw(MASTRA_RESOURCE_ID_KEY);
+    if (typeof userId !== "string") throw new Error("listNotes needs a signed-in user");
+    return toListNotesResult(await readNotes(userId, input.limit));
+  },
+});
 
 const assistant = new Agent({
   id: ASSISTANT_AGENT_ID,
@@ -21,9 +45,11 @@ const assistant = new Agent({
   instructions: `
 You are the in-app assistant. Answer concisely and honestly.
 The user message may include the current page as JSON context; use it only to orient your answer.
-Never claim to have performed actions you have no tool for.
+Use listNotes to look at the user's notes; it shows titles and short excerpts only.
+To save a note, call createNote with a title and body: the user confirms or declines it in the chat.
+Never say a note was saved unless createNote returned ok: true.
 `,
-  // tools: { ... } — add read-only product tools here (see @mastra/core createTool).
+  tools: { listNotes },
 });
 
 /** Every agent this product registers with Mastra; must include ASSISTANT_AGENT_ID. */
@@ -32,7 +58,7 @@ export const assistantAgents = { [ASSISTANT_AGENT_ID]: assistant };
 export const serverProduct = {
   serviceName: "api",
   /** Tables whose absence means product migrations have not been applied (/readyz). */
-  readinessTables: [] as string[],
+  readinessTables: ["note"] as string[],
   /** Extra fields on the GET / status document. */
   status: (): Record<string, string> => ({}),
   /** Prometheus text lines appended to /internal/metrics. */

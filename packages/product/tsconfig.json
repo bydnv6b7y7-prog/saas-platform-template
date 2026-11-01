@@ -6,5 +6,10 @@
     "sourceMap": true,
     "outDir": "dist",
     "composite": true
-  }
+  },
+  "exclude": [
+    "e2e.ts",
+    "node_modules",
+    "dist"
+  ]
 }

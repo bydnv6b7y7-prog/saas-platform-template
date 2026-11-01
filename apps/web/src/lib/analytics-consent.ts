@@ -1,12 +1,13 @@
 import type { AnalyticsConsentPolicy } from "./analytics-policy";
+import { IDENTIFIER_PREFIX } from "@northwind/env/brand";
 
 export const ANALYTICS_CONSENT_STORAGE_KEY =
-  "northwind.analytics-consent.v1";
+  `${IDENTIFIER_PREFIX}.analytics-consent.v1`;
 
 export type AnalyticsConsent = "pending" | "granted" | "denied";
 export type AnalyticsConsentDecision = Exclude<AnalyticsConsent, "pending">;
 
-const ANALYTICS_CONSENT_EVENT = "northwind:analytics-consent-change";
+const ANALYTICS_CONSENT_EVENT = "analytics-consent-change";
 let volatileConsent: AnalyticsConsent = "pending";
 let hasVolatileConsent = false;
 

@@ -17,6 +17,9 @@
     "./schema/app-feedback": {
       "default": "./src/schema/app-feedback.ts"
     },
+    "./schema/stored-object": {
+      "default": "./src/schema/stored-object.ts"
+    },
     "./schema/usage": {
       "default": "./src/schema/usage.ts"
     },

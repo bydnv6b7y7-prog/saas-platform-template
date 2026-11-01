@@ -11,6 +11,7 @@ import { resolve4 } from "node:dns/promises";
 import { existsSync, readFileSync } from "node:fs";
 
 import { parseDeployPolicy } from "./deploy-config";
+import { preflight } from "./storage-cors";
 
 export type Status = "ok" | "warn" | "fail" | "off";
 export type Check = { section: string; name: string; status: Status; detail: string; next?: string };
@@ -122,9 +123,9 @@ async function stripeChecks(env: Record<string, string | undefined>, section: st
   return checks;
 }
 
-async function storageChecks(env: Record<string, string | undefined>, section: string): Promise<Check[]> {
+async function storageChecks(env: Record<string, string | undefined>, section: string, webOrigin: string | undefined): Promise<Check[]> {
   const group = groupState(env, ["R2_ENDPOINT", "R2_BUCKET", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY"]);
-  if (group.state === "off") return [{ section, name: "Object storage (R2)", status: "off", detail: "not configured: feedback screenshots are off" }];
+  if (group.state === "off") return [{ section, name: "Object storage (R2)", status: "off", detail: "not configured: uploads are off" }];
   if (group.state === "partial") return [{ section, name: "Object storage (R2)", status: "fail", detail: `missing ${group.missing.join(", ")}` }];
   const client = new Bun.S3Client({
     endpoint: env.R2_ENDPOINT, bucket: env.R2_BUCKET, accessKeyId: env.R2_ACCESS_KEY_ID, secretAccessKey: env.R2_SECRET_ACCESS_KEY,
@@ -135,7 +136,14 @@ async function storageChecks(env: Record<string, string | undefined>, section: s
     await client.write(key, "doctor");
     const back = await client.file(key).text();
     await client.delete(key);
-    return [{ section, name: "Object storage (R2)", status: back === "doctor" ? "ok" : "fail", detail: `wrote, read and deleted a probe object in ${env.R2_BUCKET}` }];
+    const checks: Check[] = [{ section, name: "Object storage (R2)", status: back === "doctor" ? "ok" : "fail", detail: `wrote, read and deleted a probe object in ${env.R2_BUCKET}` }];
+    if (webOrigin) {
+      const origin = new URL(webOrigin).origin;
+      checks.push(await preflight({ endpoint: env.R2_ENDPOINT!, bucket: env.R2_BUCKET! }, origin)
+        ? { section, name: "Browser uploads (CORS)", status: "ok", detail: `the bucket answers a preflight from ${origin}` }
+        : { section, name: "Browser uploads (CORS)", status: "fail", detail: `the bucket refuses a preflight from ${origin}`, next: `bun run storage:cors${webOrigin === env.VITE_WEB_URL ? " --deploy" : ""}` });
+    }
+    return checks;
   } catch {
     return [{ section, name: "Object storage (R2)", status: "fail", detail: `could not write to bucket ${env.R2_BUCKET}`, next: "check the endpoint, bucket name and that the token may write objects" }];
   }
@@ -241,7 +249,7 @@ async function localChecks(): Promise<Check[]> {
   const section2 = "Integrations";
   checks.push(...await emailChecks(server, section2, false));
   checks.push(...await stripeChecks(server, section2, null, undefined, false));
-  checks.push(...await storageChecks(server, section2));
+  checks.push(...await storageChecks(server, section2, server.CORS_ORIGIN));
   checks.push(...await modelChecks(server, section2, false));
   checks.push(...configurationChecks(server, section2, server.BETTER_AUTH_URL || "http://localhost:3000"));
   return checks;
@@ -305,7 +313,7 @@ async function deployChecks(): Promise<Check[]> {
   const email = await emailChecks(merged, services, true);
   checks.push(...email.map((check) => (check.status === "fail" && !policy.required.has("email") && /no sender/.test(check.detail) ? { ...check, status: "off" as const } : check)));
   checks.push(...await stripeChecks(env, services, policy.stage === "production" ? "live" : "test", env.VITE_SERVER_URL, policy.required.has("stripe")));
-  checks.push(...await storageChecks(env, services));
+  checks.push(...await storageChecks(env, services, env.VITE_WEB_URL));
   checks.push(...await modelChecks(merged, services));
   checks.push(...configurationChecks(merged, services, env.VITE_SERVER_URL!).filter((check) => check.name !== "BETTER_AUTH_SECRET" || merged.BETTER_AUTH_SECRET));
   if (policy.required.has("posthog") && !env.POSTHOG_PROJECT_TOKEN?.trim()) {

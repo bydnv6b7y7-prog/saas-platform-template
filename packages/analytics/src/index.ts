@@ -16,13 +16,22 @@ type SubscriptionEventProperties = {
 };
 
 /**
+ * Events a product adds, by declaration merging from its own code (docs/analytics.md):
+ *
+ *   declare module "@northwind/analytics" {
+ *     interface ProductAnalyticsEvents { note_created: { has_attachment: boolean } }
+ *   }
+ */
+export interface ProductAnalyticsEvents {}
+
+/**
  * Shared, low-cardinality product analytics contract.
  *
  * Never add credentials, form values, query text, AI messages, Stripe object
  * identifiers, internal billing-row IDs, or unbounded error strings to these
  * properties.
  */
-export type AnalyticsEventMap = {
+export type AnalyticsEventMap = ProductAnalyticsEvents & {
   user_signed_up: {
     auth_method: AuthMethod;
     event_source: "auth_database_hook";
@@ -30,11 +39,6 @@ export type AnalyticsEventMap = {
   assistant_opened: {
     path: string;
     source: AssistantOpenSource;
-  };
-  app_store_link_clicked: {
-    chart: string;
-    genre_id: string;
-    store_app_id: string;
   };
   billing_interval_selected: {
     billing_interval: BillingInterval;
@@ -49,7 +53,7 @@ export type AnalyticsEventMap = {
   subscription_started: SubscriptionEventProperties & {
     currency?: string;
     list_price_minor?: number;
-    product: "northwind_pro";
+    product: `${string}_pro`;
   };
   subscription_cancel_scheduled: SubscriptionEventProperties;
   subscription_ended: SubscriptionEventProperties;

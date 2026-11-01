@@ -20,7 +20,7 @@ if (!url || process.env.IAP_ADMIN_TEST_CHILD !== "1") {
         ...process.env, DATABASE_URL: url!, IAP_ADMIN_TEST_CHILD: "1", SKIP_ENV_VALIDATION: "",
         NODE_ENV: "test", BETTER_AUTH_SECRET: "iap-admin-integration-test-secret-only",
         BETTER_AUTH_URL: "http://127.0.0.1:3016", CORS_ORIGIN: "http://127.0.0.1:3017",
-        ADMIN_USER_IDS: "", APP_STORE_ENABLED: "false", MARKET_AI_ENABLED: "false",
+        ADMIN_USER_IDS: "", APP_STORE_ENABLED: "false",
       },
       stdout: "pipe", stderr: "pipe",
     });

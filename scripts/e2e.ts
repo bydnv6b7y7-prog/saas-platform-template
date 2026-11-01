@@ -14,7 +14,9 @@ import { mkdir, rm } from "node:fs/promises";
 import { parseArgs } from "node:util";
 
 import { runGoldenPath, type StepResult } from "../test/e2e/golden-path";
+import { productE2E } from "../packages/product/e2e";
 import { startMockLlm } from "../test/e2e/mock-llm";
+import { applyCors, preflight } from "./storage-cors";
 
 const { values } = parseArgs({ args: Bun.argv.slice(2), options: { "no-build": { type: "boolean", default: false } } });
 const root = new URL("..", import.meta.url).pathname;
@@ -98,6 +100,10 @@ try {
       await Bun.sleep(1_000);
     }
     await client.fetch(`${s3Url}/${s3.bucket}/e2e-probe`, { method: "DELETE" });
+    // The same rules storage:cors writes to R2, so browser uploads here prove production's.
+    if (await applyCors({ ...s3, endpoint: s3Url }, webUrl) !== 200 || !await preflight({ ...s3, endpoint: s3Url }, webUrl)) {
+      throw new Error("the S3 stand-in did not take the CORS rules");
+    }
   });
 
   await phase("create a fresh database and run migrations", async () => {
@@ -140,7 +146,7 @@ try {
   }
 
   await phase("start the mock model, API and web", async () => {
-    llm = startMockLlm(PORT.llm);
+    llm = startMockLlm(PORT.llm, productE2E.modelRules);
     children.push({ kill: () => llm!.stop() } as unknown as Bun.Subprocess);
     children.push(Bun.spawn(["bun", "dist/index.mjs"], { cwd: `${root}apps/server`, env: serverEnv, stdout: Bun.file(`${artifacts}/api.log`), stderr: Bun.file(`${artifacts}/api.err.log`) }));
     children.push(Bun.spawn(["bun", ".output/server/index.mjs"], {
@@ -158,6 +164,21 @@ try {
   const steps = await runGoldenPath({
     webUrl, apiUrl, mailpitUrl, stripe, artifacts,
     modelRequests: () => llm?.completions() ?? 0,
+    modelToolCalls: () => llm?.toolCalls() ?? [],
+    product: productE2E,
+    query: async (text, params = []) => {
+      const sql = new Bun.SQL(databaseUrl);
+      try {
+        return await sql.unsafe(text, params);
+      } finally {
+        await sql.close();
+      }
+    },
+    storedObject: async (key) => {
+      const { AwsClient } = await import("aws4fetch");
+      const response = await new AwsClient({ ...s3, service: "s3" }).fetch(`${s3Url}/${s3.bucket}/${key}`, { method: "HEAD" });
+      return response.ok ? { size: Number(response.headers.get("content-length")), contentType: response.headers.get("content-type") } : null;
+    },
     promoteToAdmin: async (email) => {
       const sql = new Bun.SQL(databaseUrl);
       await sql`UPDATE "user" SET role = 'admin' WHERE email = ${email}`;

@@ -13,6 +13,7 @@ import {
   copilotSidebarWidthForKey,
 } from "@/lib/assistant-sidebar-width";
 import { SIDEBAR_ID } from "./context";
+import { assistantName } from "@/lib/brand";
 
 export function SidebarResizeHandle() {
   const widthRef = useRef(COPILOT_SIDEBAR_DEFAULT_WIDTH);
@@ -27,7 +28,7 @@ export function SidebarResizeHandle() {
     const width = clampCopilotSidebarWidth(nextWidth);
     widthRef.current = width;
     document.documentElement.style.setProperty(
-      "--northwind-copilot-sidebar-width",
+      "--assistant-sidebar-width",
       `${width}px`,
     );
     handleRef.current?.setAttribute("aria-valuenow", String(width));
@@ -46,14 +47,14 @@ export function SidebarResizeHandle() {
     );
     return () => {
       dragRef.current = null;
-      document.body.classList.remove("northwind-copilot-resizing");
+      document.body.classList.remove("assistant-resizing");
     };
   }, [applyWidth]);
 
   const finishDrag = (pointerId: number) => {
     if (dragRef.current?.pointerId !== pointerId) return;
     dragRef.current = null;
-    document.body.classList.remove("northwind-copilot-resizing");
+    document.body.classList.remove("assistant-resizing");
     window.localStorage.setItem(
       COPILOT_SIDEBAR_STORAGE_KEY,
       String(widthRef.current),
@@ -65,7 +66,7 @@ export function SidebarResizeHandle() {
       ref={handleRef}
       role="separator"
       tabIndex={0}
-      aria-label="Resize Northwind AI sidebar"
+      aria-label={`Resize ${assistantName} sidebar`}
       aria-controls={SIDEBAR_ID}
       aria-orientation="vertical"
       aria-valuemin={COPILOT_SIDEBAR_MIN_WIDTH}
@@ -87,7 +88,7 @@ export function SidebarResizeHandle() {
           startWidth: widthRef.current,
         };
         event.currentTarget.setPointerCapture(event.pointerId);
-        document.body.classList.add("northwind-copilot-resizing");
+        document.body.classList.add("assistant-resizing");
       }}
       onPointerMove={(event) => {
         const drag = dragRef.current;

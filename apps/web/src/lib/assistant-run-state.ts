@@ -6,7 +6,7 @@ export type AssistantRunPhase =
   | "writing"
   | null;
 
-export type AssistantRunState = {
+type AssistantRunState = {
   runId: string | null;
   activeTools: Readonly<Record<string, string>>;
   hasCompletedTool: boolean;

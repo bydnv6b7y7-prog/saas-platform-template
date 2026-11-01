@@ -17,8 +17,9 @@ import { createHash } from "node:crypto";
 import { startAppStoreMaintenance } from "@northwind/better-auth-app-store";
 import { appStoreMetrics } from "./app-store-metrics";
 
-import { appClientApp, startFeedbackScreenshotCleanup } from "./app-client/routes";
-import { feedbackScreenshotStorage } from "@northwind/api/feedback-screenshots";
+import { appClientApp } from "./app-client/routes";
+import { startStorageCleanup } from "./storage-cleanup";
+import { objectStorage } from "@northwind/api/object-storage";
 import { billingApp } from "./billing/routes";
 import { assistantUsageApp } from "./billing/assistant-routes";
 import { serverProduct } from "./product";
@@ -200,8 +201,8 @@ app.get("/readyz", async (c) => {
         host: env.POSTHOG_PROJECT_TOKEN ? env.POSTHOG_HOST : null,
         tokenFingerprint: analyticsTokenFingerprint,
       },
-      // Reported, not required: without R2 the app simply offers no screenshot.
-      feedbackStorage: { configured: feedbackScreenshotStorage !== null },
+      // Reported, not required: without a bucket, uploads are simply off.
+      objectStorage: { configured: objectStorage !== null },
     },
     ready ? 200 : 503,
   );
@@ -287,7 +288,7 @@ const mastraRetention = startMastraRetentionScheduler();
 const appStoreMaintenance = appStoreBilling.service ? startAppStoreMaintenance(appStoreBilling.service) : null;
 // Timers are unref'd: shutdown does not wait for them, and an interrupted
 // clean-up simply resumes from its ledger next time.
-const stopScreenshotCleanup = feedbackScreenshotStorage ? startFeedbackScreenshotCleanup() : null;
+const stopStorageCleanup = objectStorage ? startStorageCleanup() : null;
 
 logInfo("server_started", { port: server.port, sha: env.BUILD_SHA });
 
@@ -298,7 +299,7 @@ for (const signal of ["SIGTERM", "SIGINT"] as const) {
     shuttingDown = true;
     void (async () => {
       logInfo("server_shutdown", { signal });
-      stopScreenshotCleanup?.();
+      stopStorageCleanup?.();
       const drainResults = await Promise.allSettled([
         // Finish auth/webhook handlers before closing the DB or flushing analytics.
         server.stop(false),

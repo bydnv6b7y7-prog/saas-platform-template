@@ -6,11 +6,10 @@ import {
 } from "@northwind/env/analytics-privacy";
 
 export type AnalyticsConsentPolicy = "opt_in" | "opt_out";
-export type { AnalyticsPrivacyMode };
 
 // Conservative baseline, not a claim that this is the complete legal map.
 // Legal/product can extend it at runtime with ANALYTICS_OPT_IN_COUNTRIES.
-export const DEFAULT_ANALYTICS_OPT_IN_COUNTRIES = [
+const DEFAULT_ANALYTICS_OPT_IN_COUNTRIES = [
   "AT",
   "BE",
   "BG",

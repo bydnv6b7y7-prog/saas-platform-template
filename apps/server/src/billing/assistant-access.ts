@@ -42,11 +42,11 @@ export type AssistantPrincipal = {
   role?: string | null;
 };
 
-export type AssistantRunReservation = {
+type AssistantRunReservation = {
   windows: UsageReservation[];
 };
 
-export type AssistantRunDecision =
+type AssistantRunDecision =
   | { allowed: true; reservation: AssistantRunReservation }
   | {
       allowed: false;
@@ -183,7 +183,6 @@ export async function getAssistantUsage(
   return {
     plan: access.plan,
     accessSource: access.accessSource,
-    historyEnabled: true,
     limits: access.limits,
     daily: {
       used: daily.used,

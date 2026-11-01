@@ -27,6 +27,7 @@ import {
   focusHistoryTrigger,
   useAssistantControl,
 } from "./context";
+import { assistantName } from "@/lib/brand";
 
 export function AssistantHistoryDrawer() {
   const {
@@ -132,7 +133,7 @@ export function AssistantHistoryDrawer() {
         </button>
         {isRunning ? (
           <p className="mb-3 rounded-xl bg-muted px-3 py-2 text-xs leading-5 text-muted-foreground">
-            You can review history while Northwind AI is working. Switching and
+            You can review history while {assistantName} is working. Switching and
             starting a conversation are available when this answer finishes.
           </p>
         ) : null}

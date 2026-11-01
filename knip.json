@@ -1,0 +1,92 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "ignoreBinaries": [
+    "stripe",
+    "apps/server/dist/index.mjs"
+  ],
+  "workspaces": {
+    ".": {
+      "entry": [
+        "scripts/*.ts",
+        "test/**/*.ts"
+      ],
+      "project": [
+        "scripts/**/*.ts",
+        "test/**/*.ts"
+      ],
+      "bun": false
+    },
+    "apps/server": {
+      "entry": [
+        "src/**/*-cli.ts",
+        "src/product/cli.ts",
+        "src/product/*-worker.ts",
+        "src/**/*.test.ts"
+      ],
+      "project": [
+        "src/**/*.ts"
+      ],
+      "bun": false,
+      "tsdown": false
+    },
+    "apps/web": {
+      "entry": [
+        "src/routes/**/*.{ts,tsx}",
+        "src/router.tsx",
+        "src/**/*.test.{ts,tsx}"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx}"
+      ],
+      "bun": false,
+      "ignoreDependencies": [
+        "tailwindcss"
+      ]
+    },
+    "packages/*": {
+      "entry": [
+        "scripts/*.ts",
+        "src/**/*.test.ts",
+        "src/env.ts",
+        "src/schema/index.ts"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx}"
+      ],
+      "bun": false,
+      "drizzle": false
+    },
+    "packages/ui": {
+      "entry": [
+        "src/components/**/*.tsx",
+        "src/lib/*.ts"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx}"
+      ],
+      "bun": false,
+      "ignoreDependencies": [
+        "shadcn",
+        "tw-animate-css",
+        "tailwindcss"
+      ]
+    },
+    "packages/env": {
+      "entry": [
+        "src/**/*.test.ts",
+        "src/web.ts"
+      ],
+      "project": [
+        "src/**/*.ts"
+      ],
+      "bun": false
+    }
+  },
+  "rules": {
+    "exports": "warn",
+    "types": "warn"
+  },
+  "ignoreUnresolved": [
+    "@/routeTree.gen"
+  ]
+}

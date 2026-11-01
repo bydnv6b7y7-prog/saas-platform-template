@@ -8,6 +8,7 @@ import { toast } from "sonner";
 
 import { DeleteAccountDialog } from "@/components/delete-account-dialog";
 import { resetAnalyticsIdentity } from "@/lib/analytics";
+import { brandName } from "@/lib/brand";
 
 export const Route = createFileRoute("/_auth/account/delete")({
   component: DeleteAccountPage,
@@ -51,7 +52,7 @@ function DeleteAccountPage() {
           Delete account
         </h1>
         <p className="mt-3 max-w-2xl text-base leading-7 text-muted-foreground">
-          Permanently delete your Northwind account and personal data. Deletion is
+          Permanently delete your {brandName} account and personal data. Deletion is
           immediate and cannot be undone.
         </p>
       </header>

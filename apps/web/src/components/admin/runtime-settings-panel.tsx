@@ -21,7 +21,7 @@ type Overview<V> = SettingsSnapshot<V> & { defaults: V };
 type HistoryEntry<V> = { revision: number; actorId: string; createdAt: string; before: V; after: V };
 
 /** The tRPC procedures of one runtime settings scope (`createSettingsRouter` on the server). */
-export type SettingsProcedures<V extends SettingsValues> = {
+type SettingsProcedures<V extends SettingsValues> = {
   overview: DecorateQueryProcedure<Def<void, Overview<V>>>;
   update: DecorateMutationProcedure<Def<{ expectedRevision: number; values: V }, SettingsSnapshot<V>>>;
   history: DecorateQueryProcedure<Def<void, HistoryEntry<V>[]>>;
@@ -140,7 +140,7 @@ export function RuntimeSettingsPanel<V extends SettingsValues>(props: PanelProps
     <>
       <Editor {...props} snapshot={data} />
       <p className="mt-3 text-xs leading-5 text-muted-foreground">
-        {data.source === "deployment" ? "Using deployment values. Your first save stores these settings in Admin." : `Revision ${data.revision}`}
+        {data.source === "default" ? "Using the recommended defaults. Your first save stores these settings." : `Revision ${data.revision}`}
         {data.updatedAt ? ` · Updated ${formatUtcDateTime(data.updatedAt)}` : ""}
       </p>
       {overview.isError ? (

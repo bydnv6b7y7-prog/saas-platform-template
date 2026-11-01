@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { appleApplicationLegacyIdentitySchema } from "./apple-application";
 
 export const APP_STORE_CREDENTIAL_KEYS = [
   "APP_STORE_ISSUER_ID",
@@ -47,10 +46,5 @@ export const appStoreServerSchema = {
   APP_STORE_KEY_ID: z.string().trim().min(1).optional(),
   APP_STORE_PRIVATE_KEY_BASE64: z.string().min(1).optional(),
   APP_STORE_ENVIRONMENTS: appStoreEnvironmentsSchema.transform((environments) => environments.join(",")),
-  // Compatibility assertions only; application identity is owned by the catalog.
-  APP_STORE_BUNDLE_ID: appleApplicationLegacyIdentitySchema.shape.APP_STORE_BUNDLE_ID,
-  APPLE_APP_BUNDLE_IDENTIFIER: appleApplicationLegacyIdentitySchema.shape.APPLE_APP_BUNDLE_IDENTIFIER,
-  APP_STORE_APP_APPLE_ID: appleApplicationLegacyIdentitySchema.shape.APP_STORE_APP_APPLE_ID,
-  APP_STORE_SUBSCRIPTION_GROUP_IDS: appleApplicationLegacyIdentitySchema.shape.APP_STORE_SUBSCRIPTION_GROUP_IDS,
   ...appStoreMaintenanceSchema.shape,
 };

@@ -3,9 +3,10 @@ import { env } from "@northwind/env/server";
 import { PostgresStore } from "@mastra/pg";
 
 import { MASTRA_SCHEMA_NAME } from "./constants";
+import { IDENTIFIER_PREFIX } from "@northwind/env/brand";
 
 export const mastraStorage = new PostgresStore({
-  id: "northwind-mastra-storage",
+  id: `${IDENTIFIER_PREFIX}-mastra-storage`,
   pool,
   schemaName: MASTRA_SCHEMA_NAME,
   // Only operational traces expire. Threads and messages remain product data.

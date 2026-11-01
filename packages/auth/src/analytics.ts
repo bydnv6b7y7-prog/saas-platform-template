@@ -11,6 +11,7 @@ import { createHash } from "node:crypto";
 import { PostHog } from "posthog-node";
 import type { EventMessage } from "posthog-node";
 import type Stripe from "stripe";
+import { IDENTIFIER_PREFIX } from "@northwind/env/brand";
 
 type SubscriptionAnalyticsCallbacks = Pick<
   SubscriptionOptions,
@@ -125,7 +126,7 @@ export function createServerAnalytics(
       const currency = item?.price.currency.toUpperCase();
       const properties: AnalyticsEventMap["subscription_started"] = {
         ...subscriptionProperties(subscription),
-        product: "northwind_pro",
+        product: `${IDENTIFIER_PREFIX}_pro`,
         ...(typeof unitAmount === "number" && unitAmount >= 0
           ? { list_price_minor: unitAmount * quantity }
           : {}),

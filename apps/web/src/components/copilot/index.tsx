@@ -11,11 +11,12 @@ import {
   COPILOT_RUNTIME_URL,
   type CopilotErrorEvent,
 } from "./context";
-import { AppStoreCopilotRuntime } from "./runtime";
+import { AssistantRuntime } from "./runtime";
 import { assistantUsageQueryKey } from "@/lib/assistant-usage";
 import { assistantFailureReassurance } from "@/product";
+import { assistantName } from "@/lib/brand";
 
-export function AppStoreCopilot({
+export function AssistantCopilot({
   open,
   onOpenChange,
   usage,
@@ -29,12 +30,12 @@ export function AppStoreCopilot({
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
   const handleError = useCallback((event: CopilotErrorEvent) => {
-    console.error("[Northwind AI] CopilotKit error", event.type);
+    console.error("[assistant] CopilotKit error", event.type);
     void queryClient.invalidateQueries({
       queryKey: assistantUsageQueryKey(userId),
     });
     setError(
-      `Northwind AI could not complete this request. ${assistantFailureReassurance}`,
+      `${assistantName} could not complete this request. ${assistantFailureReassurance}`,
     );
   }, [queryClient, userId]);
   const clearError = useCallback(() => setError(null), []);
@@ -48,7 +49,7 @@ export function AppStoreCopilot({
       showDevConsole={false}
       onError={handleError}
     >
-      <AppStoreCopilotRuntime
+      <AssistantRuntime
         clearError={clearError}
         open={open}
         error={error}

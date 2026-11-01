@@ -7,6 +7,7 @@
 | [平台边界](./platform-template.md) | 业务代码放在哪里、平台只经由哪些入口触达业务 |
 | [邮箱验证](./email-verification.md) | 注册验证码、Cloudflare Email Sending |
 | [订阅](./subscriptions.md) | Stripe Checkout / Portal 与权益 |
+| [App Store 内购](./app-store-subscriptions.md) | StoreKit 2：App 身份、凭据、服务器通知与验收 |
 | [原生与 Web 登录](./native-ios-auth.md) | Google / GitHub / Apple、iOS 原生登录 |
 | [AI 助手](./ai-assistant.md) | Mastra + CopilotKit 运行骨架、额度、记忆 |
 | [分析](./analytics.md) | PostHog、区域化同意、服务端转化事件 |

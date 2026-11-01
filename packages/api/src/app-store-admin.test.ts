@@ -73,8 +73,8 @@ describe("App Store Admin metadata", () => {
       .toMatchObject({ enabled: false, configured: false, configurationError: null });
   });
 
-  test("rejects malformed private keys and conflicting catalog assertions without exposing values", () => {
-    for (const override of [{ APP_STORE_PRIVATE_KEY_BASE64: "secret-invalid-pem" }, { APP_STORE_BUNDLE_ID: "secret-other-app" }, { APP_STORE_ENVIRONMENTS: "Production," }, { APP_STORE_RECONCILE_INTERVAL_SECONDS: 0 }]) {
+  test("rejects malformed private keys and settings without exposing values", () => {
+    for (const override of [{ APP_STORE_PRIVATE_KEY_BASE64: "secret-invalid-pem" }, { APP_STORE_ENVIRONMENTS: "Production," }, { APP_STORE_RECONCILE_INTERVAL_SECONDS: 0 }]) {
       const result = readAppStoreAdminConfiguration({ ...configured, ...override });
       expect(result.configured).toBe(false);
       expect(result.configurationError).toBe("INVALID_CONFIGURATION");

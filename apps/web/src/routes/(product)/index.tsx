@@ -3,6 +3,7 @@ import { buttonVariants } from "@northwind/ui/components/button";
 import { useQuery } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
 
+import { AssistantLaunchButton } from "@/components/assistant-launch-button";
 import { authClient } from "@/lib/auth-client";
 import { createSeoHead } from "@/lib/seo";
 import { useTRPC } from "@/utils/trpc";
@@ -30,7 +31,10 @@ function HomePage() {
       <div className="mt-8 flex flex-wrap gap-3">
         <Link to="/pricing" className={buttonVariants()}>See pricing</Link>
         {session.data ? (
-          <Link to="/account/billing" className={buttonVariants({ variant: "outline" })}>Your account</Link>
+          <>
+            <AssistantLaunchButton label="Ask the assistant" size="default" />
+            <Link to="/account/billing" className={buttonVariants({ variant: "outline" })}>Your account</Link>
+          </>
         ) : session.isPending ? null : (
           <Link to="/login" className={buttonVariants({ variant: "outline" })}>Sign in</Link>
         )}

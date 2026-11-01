@@ -12,13 +12,14 @@
     "./copilot": "./src/copilot.ts",
     "./email": "./src/email.ts",
     "./operational-settings": "./src/operational-settings.ts",
-    "./feedback-storage": "./src/feedback-storage.ts",
+    "./object-storage": "./src/object-storage.ts",
     "./posthog": "./src/posthog.ts",
     "./platform-server-schema": "./src/platform-server-schema.ts",
     "./platform-web-schema": "./src/platform-web-schema.ts",
     "./server": "./src/server.ts",
     "./stripe": "./src/stripe.ts",
-    "./web": "./src/web.ts"
+    "./web": "./src/web.ts",
+    "./brand": "./src/brand.ts"
   },
   "scripts": {
     "check-types": "tsc --noEmit",

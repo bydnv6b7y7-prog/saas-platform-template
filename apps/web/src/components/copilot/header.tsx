@@ -19,9 +19,10 @@ import {
   useAssistantControl,
 } from "./context";
 import { AssistantHistoryDrawer } from "./history-drawer";
+import { assistantName } from "@/lib/brand";
 
-export const AppStoreCopilotHeader = Object.assign(
-  function AppStoreCopilotHeader() {
+export const AssistantHeader = Object.assign(
+  function AssistantHeader() {
     const {
       clearError,
       error,
@@ -84,7 +85,7 @@ export const AppStoreCopilotHeader = Object.assign(
             </span>
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold tracking-[-0.01em] text-foreground">
-                Northwind AI
+                {assistantName}
                 <span className="ml-2 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                   {usage.accessSource === "admin" ? "admin" : usage.plan}
                 </span>
@@ -116,7 +117,7 @@ export const AppStoreCopilotHeader = Object.assign(
             <button
               type="button"
               data-assistant-close
-              aria-label="Close Northwind AI"
+              aria-label={`Close ${assistantName}`}
               title="Close"
               onClick={close}
               className="assistant-icon-button"
@@ -169,7 +170,7 @@ export const AppStoreCopilotHeader = Object.assign(
     );
   },
   {
-    displayName: "AppStoreCopilotHeader",
+    displayName: "AssistantHeader",
     Title: CopilotModalHeader.Title,
     CloseButton: CopilotModalHeader.CloseButton,
     DrawerLauncher: CopilotModalHeader.DrawerLauncher,

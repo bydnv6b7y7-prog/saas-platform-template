@@ -13,7 +13,7 @@ import { serverAnalytics } from "./analytics";
 const STRIPE_API_VERSION = "2026-10-28.endive" as const;
 const CATALOG_TTL_MS = 5 * 60 * 1_000;
 
-export type StripeBillingEnvironment = {
+type StripeBillingEnvironment = {
   NODE_ENV?: string;
   /** production (default) runs on Live keys only; staging on test keys only, so it can never charge anyone. */
   DEPLOY_STAGE?: string;
@@ -31,7 +31,7 @@ type ConfiguredStripeBilling = {
   priceIds: Record<BillingInterval, string>;
 };
 
-export type StripeBillingConfiguration =
+type StripeBillingConfiguration =
   | { configured: false }
   | ConfiguredStripeBilling;
 

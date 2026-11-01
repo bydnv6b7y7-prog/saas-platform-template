@@ -6,7 +6,7 @@ A Bun + Turborepo monorepo with the product-independent half of a SaaS already w
 | --- | --- |
 | Accounts: email/password with OTP verification, Google / GitHub / Apple sign-in, native iOS sign-in, account deletion | `packages/auth`, `apps/web/src/routes/login.tsx` |
 | Payments: Stripe Checkout + Customer Portal subscriptions, App Store in-app subscriptions | `packages/auth`, `packages/billing`, `packages/better-auth-app-store` |
-| Object storage: Cloudflare R2 (S3 API) for user-uploaded screenshots, with retention clean-up | `packages/api/src/feedback-screenshots.ts`, `apps/server/src/app-client` |
+| Object storage: Cloudflare R2 (S3 API), one bucket shared by registered upload purposes (type, size, link lifetime, Free/Pro quota); browser-direct uploads (`bun run storage:cors`), a per-user upload ledger and hourly clean-up | `packages/api/src/object-storage.ts`, `user-objects.ts`, `routers/uploads.ts` |
 | AI assistant: Mastra agent + CopilotKit AG-UI sidecar, durable runs, private thread history, plan-aware quota | `apps/server/src/mastra`, `apps/web/src/components/copilot` |
 | Admin console: users, roles, runtime AI limits, App Store diagnostics, client config, feedback inbox | `apps/web/src/routes/admin`, `packages/api` |
 | Analytics: PostHog with regional consent, identity stitching, server-side conversion events | `packages/analytics`, `apps/web/src/lib/analytics*.ts` |
@@ -24,6 +24,10 @@ Platform code reaches product code only through these four locations (enforced b
 | `apps/web/src/routes/**/(product)/` | your pages; put signed-in pages in `routes/_auth/(product)/` and admin pages in `routes/admin/(product)/` so they inherit those guards |
 
 The starter product is deliberately tiny: a home page, an `example.hello` procedure, and an assistant without tools.
+Unless the template was exported with `--no-examples` (`"examples": false` in `.template.json`), it also carries **My notes**,
+an example that uses every platform piece at once: per-user data, files uploaded straight to object storage, the Free/Pro
+allowance, an assistant tool with a card and a confirm-before-saving action, an Admin page, analytics and e2e steps.
+Its guide, `example-notes.md` in the docs folder, explains it and how to remove it.
 
 ## Run it
 
@@ -63,7 +67,7 @@ bun run deploy:production       # push main; the workflow builds, migrates, depl
 ## Stay up to date
 
 `.template.json` and `.template-source` record how and from which commit this repository was exported.
-`bun run template:update` in the platform repository re-exports both commits and applies only the platform's
+`bun scripts/template-update.ts <this repository>` in the platform repository re-exports both commits and applies only the platform's
 changes here as a three-way merge, so your product code is never overwritten.
 
 ## Make it yours

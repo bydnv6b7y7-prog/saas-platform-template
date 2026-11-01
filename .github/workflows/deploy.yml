@@ -47,13 +47,13 @@ jobs:
       postgres:
         image: postgres:18
         env:
-          POSTGRES_DB: market_intelligence_verify
+          POSTGRES_DB: migration_verify
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U postgres -d market_intelligence_verify"
+          --health-cmd "pg_isready -U postgres -d migration_verify"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 12
@@ -187,51 +187,23 @@ jobs:
           VITE_ENABLE_INDEXING: ${{ env.VITE_ENABLE_INDEXING }}
           VITE_POSTHOG_PROJECT_TOKEN: ${{ secrets.POSTHOG_PROJECT_TOKEN }}
           VITE_POSTHOG_HOST: ${{ env.VITE_POSTHOG_HOST }}
-      - name: Email OTP PostgreSQL integration tests
-        run: |
-          bun -e 'const url = new URL(process.env.EMAIL_OTP_TEST_DATABASE_URL); url.pathname = "/postgres"; const db = new Bun.SQL(url.href); await db.unsafe("CREATE DATABASE email_otp_test"); await db.close();'
-          bun test packages/auth/src/email-otp.postgres.test.ts
-        env:
-          SKIP_ENV_VALIDATION: "1"
-          EMAIL_OTP_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/email_otp_test
       - name: Migration safety check
         run: |
-          # 破坏性迁移必须走显式评审的发布路径：评审通过的迁移在这里按文件放行。
-          if grep -Ein 'DROP[[:space:]]+(TABLE|COLUMN)|TRUNCATE|DELETE[[:space:]]+FROM' packages/db/src/migrations/*.sql; then
+          # Destructive statements are allowed only in migrations listed (with a reason) in reviewed-destructive.txt.
+          reviewed="$(sed -E 's/[[:space:]]*#.*//' packages/db/src/migrations/reviewed-destructive.txt 2>/dev/null | grep -v '^$' || true)"
+          if grep -EiHn 'DROP[[:space:]]+(TABLE|COLUMN)|TRUNCATE|DELETE[[:space:]]+FROM' packages/db/src/migrations/*.sql \
+               | grep -Fv -e "__none__" ${reviewed:+$(printf -- '-e migrations/%s ' ${reviewed})}; then
             echo "Destructive migration requires an explicit reviewed release path."
             exit 1
           fi
-      - name: Admin users PostgreSQL integration tests
-        run: |
-          bun -e 'const url = new URL(process.env.ADMIN_USERS_TEST_DATABASE_URL); url.pathname = "/postgres"; const db = new Bun.SQL(url.href); await db.unsafe("CREATE DATABASE northwind_admin_users_test"); await db.close();'
-          bun test packages/auth/src/admin-users.postgres.test.ts
+      # The same list as CI and the release gate (scripts/test-postgres.ts).
+      - name: PostgreSQL integration tests
+        run: bun run test:postgres
         env:
-          SKIP_ENV_VALIDATION: "1"
-          ADMIN_USERS_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/northwind_admin_users_test
-      - name: Operational settings PostgreSQL integration tests
-        run: |
-          bun -e 'const url = new URL(process.env.OPS_TEST_DATABASE_URL); url.pathname = "/postgres"; const db = new Bun.SQL(url.href); await db.unsafe("CREATE DATABASE northwind_config_governance_test"); await db.close();'
-          bun test packages/api/src/operational-settings.integration.test.ts
-        env:
-          SKIP_ENV_VALIDATION: "1"
-          OPS_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/northwind_config_governance_test
-      - name: App Store Admin PostgreSQL integration tests
-        run: |
-          bun -e 'const url = new URL(process.env.IAP_ADMIN_TEST_DATABASE_URL); url.pathname = "/postgres"; const db = new Bun.SQL(url.href); await db.unsafe("CREATE DATABASE northwind_iap_admin_test"); await db.close();'
-          bun test packages/api/src/app-store-admin.integration.test.ts
-        env:
-          SKIP_ENV_VALIDATION: "1"
-          IAP_ADMIN_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/northwind_iap_admin_test
-      - name: App feedback PostgreSQL integration tests
-        run: |
-          bun -e 'const url = new URL(process.env.APP_FEEDBACK_TEST_DATABASE_URL); url.pathname = "/postgres"; const db = new Bun.SQL(url.href); await db.unsafe("CREATE DATABASE northwind_app_feedback_test"); await db.close();'
-          bun test apps/server/src/app-client/app-client.integration.test.ts
-        env:
-          SKIP_ENV_VALIDATION: "1"
-          APP_FEEDBACK_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/northwind_app_feedback_test
+          TEST_POSTGRES_URL: postgresql://postgres:postgres@127.0.0.1:5432
       - name: Empty database migration and idempotency
         env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/market_intelligence_verify
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/migration_verify
           SKIP_ENV_VALIDATION: "1"
         run: |
           cd packages/db
@@ -242,7 +214,7 @@ jobs:
           bun run mastra:migrate
       - name: Web SSR integration smoke
         env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/market_intelligence_verify
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/migration_verify
           BETTER_AUTH_SECRET: ci-only-secret-ci-only-secret-ci-only-secret
           BETTER_AUTH_URL: http://127.0.0.1:3000
           CORS_ORIGIN: http://127.0.0.1:3001

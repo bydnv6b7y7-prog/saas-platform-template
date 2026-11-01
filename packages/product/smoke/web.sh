@@ -1,5 +1,5 @@
 # Product checks, sourced by scripts/web-smoke.sh after the platform checks.
-# Available: WEB_BASE_URL, EXPECT_INDEXING, EXPECTED_BRAND_NAME, tmp_dir, curl_request, curl_ok,
+# Available: WEB_BASE_URL, EXPECT_INDEXING, SMOKE_LEVEL (full | basic), EXPECTED_BRAND_NAME, tmp_dir, curl_request, curl_ok,
 # fetch_page, assert_permanent_redirect and assert_private_client_shell.
 
 fetch_page "/" "home"

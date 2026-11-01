@@ -1,0 +1,4 @@
+{
+  "$comment": "Product tables drizzle-kit must not manage (packages/db/drizzle.config.ts), as glob patterns such as \"!events_20*\". Empty: drizzle-kit manages every table.",
+  "tablesFilter": []
+}

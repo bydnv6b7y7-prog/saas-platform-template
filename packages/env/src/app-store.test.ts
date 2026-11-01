@@ -1,8 +1,6 @@
 import { expect, test } from "bun:test";
 import { z } from "zod";
-import { APPLE_APPLICATION, appleApplicationLegacyIdentitySchema } from "./apple-application";
 import { appStoreMaintenanceSchema, appStoreServerSchema, parseAppStoreEnvironments } from "./app-store";
-import { platformServerSchema } from "./platform-server-schema";
 
 test("environment parsing accepts only explicit Apple environments and normalizes duplicates", () => {
   expect(parseAppStoreEnvironments()).toEqual(["Production"]);
@@ -12,28 +10,6 @@ test("environment parsing accepts only explicit Apple environments and normalize
   for (const value of ["", " ", "Production,", ",Sandbox", "production", "Xcode", "LocalTesting", "Production,Sandbox,Xcode"]) {
     expect(() => parseAppStoreEnvironments(value)).toThrow("APP_STORE_ENVIRONMENTS");
     expect(z.object(appStoreServerSchema).safeParse({ APP_STORE_ENVIRONMENTS: value }).success).toBe(false);
-  }
-});
-
-test("the host environment accepts absent or matching deprecated identity assertions", () => {
-  const schema = z.object({ ...platformServerSchema, ...appStoreServerSchema }).pick({
-    APP_STORE_BUNDLE_ID: true, APPLE_APP_BUNDLE_IDENTIFIER: true,
-    APP_STORE_APP_APPLE_ID: true, APP_STORE_SUBSCRIPTION_GROUP_IDS: true,
-  });
-  expect(schema.parse({})).toEqual({});
-  expect(schema.parse({
-    APP_STORE_BUNDLE_ID: ` ${APPLE_APPLICATION.bundleId} `,
-    APPLE_APP_BUNDLE_IDENTIFIER: APPLE_APPLICATION.bundleId,
-    APP_STORE_APP_APPLE_ID: String(APPLE_APPLICATION.appAppleId),
-    APP_STORE_SUBSCRIPTION_GROUP_IDS: ` ${APPLE_APPLICATION.subscriptionGroupId},${APPLE_APPLICATION.subscriptionGroupId} `,
-  })).toMatchObject({ APP_STORE_BUNDLE_ID: APPLE_APPLICATION.bundleId, APP_STORE_APP_APPLE_ID: APPLE_APPLICATION.appAppleId });
-  for (const value of [
-    { APP_STORE_BUNDLE_ID: "other.app" }, { APPLE_APP_BUNDLE_IDENTIFIER: "other.app" },
-    { APP_STORE_APP_APPLE_ID: "123" }, { APP_STORE_SUBSCRIPTION_GROUP_IDS: "123" },
-    { APP_STORE_SUBSCRIPTION_GROUP_IDS: "" }, { APP_STORE_SUBSCRIPTION_GROUP_IDS: `${APPLE_APPLICATION.subscriptionGroupId},` },
-  ]) {
-    expect(schema.safeParse(value).success).toBe(false);
-    expect(appleApplicationLegacyIdentitySchema.safeParse(value).success).toBe(false);
   }
 });
 

@@ -35,7 +35,6 @@ describe("assistant usage route", () => {
         return {
           plan: "free",
           accessSource: "free",
-          historyEnabled: true,
           limits: access.limits,
           daily: {
             used: 2,
@@ -53,7 +52,6 @@ describe("assistant usage route", () => {
     expect(body).toEqual({
       plan: "free",
       accessSource: "free",
-      historyEnabled: true,
       configured: false,
       limits: { per5Minutes: 5, perDay: 5 },
       daily: {
@@ -79,7 +77,6 @@ describe("assistant usage route", () => {
       getUsage: async (_userId, access) => ({
         plan: access.plan,
         accessSource: access.accessSource,
-        historyEnabled: true,
         limits: access.limits,
         daily: {
           used: 0,

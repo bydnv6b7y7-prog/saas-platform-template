@@ -6,7 +6,7 @@ import type { z } from "zod";
 export type SettingsSnapshot<T> = {
   values: T;
   revision: number;
-  source: "database" | "deployment";
+  source: "database" | "default";
   updatedAt: string | null;
   updatedBy: string | null;
 };
@@ -15,9 +15,8 @@ export type SettingsSnapshot<T> = {
 export type SettingsDefinition<S extends z.ZodObject> = {
   scope: string;
   schema: S;
+  /** Values that apply until the first Admin save. */
   defaults: Readonly<z.infer<S>>;
-  /** Values that apply until the first Admin save, usually read from deployment variables. */
-  deploymentValues: () => z.infer<S>;
 };
 
 type SettingsRow = typeof runtimeSettings.$inferSelect;
@@ -25,7 +24,7 @@ type SettingsRow = typeof runtimeSettings.$inferSelect;
 /** Inject a dedicated database for integration tests. No process cache or partial overrides. */
 export function createSettingsStore<S extends z.ZodObject>(
   database: typeof db,
-  { scope, schema, deploymentValues }: Pick<SettingsDefinition<S>, "scope" | "schema" | "deploymentValues">,
+  { scope, schema, defaults }: SettingsDefinition<S>,
 ) {
   type Values = z.infer<S>;
   const snapshot = (row: SettingsRow | undefined): SettingsSnapshot<Values> => row ? {
@@ -35,9 +34,9 @@ export function createSettingsStore<S extends z.ZodObject>(
     updatedAt: row.updatedAt.toISOString(),
     updatedBy: row.updatedBy,
   } : {
-    values: schema.parse(deploymentValues()),
+    values: schema.parse(defaults),
     revision: 0,
-    source: "deployment",
+    source: "default",
     updatedAt: null,
     updatedBy: null,
   };

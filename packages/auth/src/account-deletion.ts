@@ -12,6 +12,7 @@ import type { PostHogDeletionConfiguration } from "@northwind/env/posthog";
 
 import type { SendEmail } from "./email";
 import type { StripeBillingService } from "./stripe-billing";
+import { BRAND_NAME, IDENTIFIER_PREFIX } from "@northwind/env/brand";
 
 /**
  * Self-service account deletion (App Store guideline 5.1.1(v)) and the shared
@@ -52,7 +53,7 @@ export type AccountDeletionDatabase = Pick<
   "select" | "delete" | "transaction"
 >;
 
-export class AccountDeletionError extends Error {
+class AccountDeletionError extends Error {
   readonly code = "USER_NOT_FOUND";
 
   constructor(userId: string) {
@@ -85,8 +86,8 @@ export function verificationIdentifiersForEmail(email: string): string[] {
   const identity = createHash("sha256").update(email).digest("hex");
   return [
     `email-verification-otp-${email}`,
-    `northwind:email-otp:operation:${identity}`,
-    `northwind:email-otp:cooldown:${identity}`,
+    `${IDENTIFIER_PREFIX}:email-otp:operation:${identity}`,
+    `${IDENTIFIER_PREFIX}:email-otp:cooldown:${identity}`,
   ];
 }
 
@@ -132,9 +133,9 @@ export function createPostHogPersonDeleter(
 }
 
 function deletionEmail(email: string) {
-  const subject = "Your Northwind account has been deleted";
-  const text = `Your Northwind account (${email}) has been deleted, along with your profile, sign-in credentials, sessions, assistant conversation history, saved validations, private queries, share links, and usage counters.\n\nBilling records we must keep for finance and compliance are retained in anonymized form.\n\nIf you paid with a card, your subscription has been cancelled at the end of the current billing period and will not renew. If you subscribed on iPhone or iPad, Apple manages that subscription — cancel it in App Store > Subscriptions; we cannot cancel it for you.\n\nIf you did not request this deletion, contact support immediately.`;
-  const html = `<h1>Your account has been deleted</h1><p>Your Northwind account (<strong>${email}</strong>) has been deleted, along with your profile, sign-in credentials, sessions, assistant conversation history, saved validations, private queries, share links, and usage counters.</p><p>Billing records we must keep for finance and compliance are retained in anonymized form.</p><p><strong>Card subscriptions:</strong> cancelled at the end of the current billing period; they will not renew.</p><p><strong>iPhone/iPad subscriptions:</strong> Apple manages those — cancel them in App Store &gt; Subscriptions; we cannot cancel them for you.</p><p>If you did not request this deletion, contact support immediately.</p>`;
+  const subject = `Your ${BRAND_NAME} account has been deleted`;
+  const text = `Your ${BRAND_NAME} account (${email}) has been deleted, along with your profile, sign-in credentials, sessions, assistant conversation history, saved validations, private queries, share links, and usage counters.\n\nBilling records we must keep for finance and compliance are retained in anonymized form.\n\nIf you paid with a card, your subscription has been cancelled at the end of the current billing period and will not renew. If you subscribed on iPhone or iPad, Apple manages that subscription — cancel it in App Store > Subscriptions; we cannot cancel it for you.\n\nIf you did not request this deletion, contact support immediately.`;
+  const html = `<h1>Your account has been deleted</h1><p>Your ${BRAND_NAME} account (<strong>${email}</strong>) has been deleted, along with your profile, sign-in credentials, sessions, assistant conversation history, saved validations, private queries, share links, and usage counters.</p><p>Billing records we must keep for finance and compliance are retained in anonymized form.</p><p><strong>Card subscriptions:</strong> cancelled at the end of the current billing period; they will not renew.</p><p><strong>iPhone/iPad subscriptions:</strong> Apple manages those — cancel them in App Store &gt; Subscriptions; we cannot cancel them for you.</p><p>If you did not request this deletion, contact support immediately.</p>`;
   return { to: email, subject, text, html };
 }
 

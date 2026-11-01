@@ -6,7 +6,7 @@ type AdvisoryLockClient = {
   release: (error?: Error | boolean) => void;
 };
 
-export type AdvisoryLock = {
+type AdvisoryLock = {
   release: () => Promise<void>;
 };
 

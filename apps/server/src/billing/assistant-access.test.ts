@@ -110,7 +110,6 @@ describe("assistant subscription access", () => {
       }),
     );
 
-    expect(usage.historyEnabled).toBe(true);
     expect(usage.accessSource).toBe("free");
   });
 

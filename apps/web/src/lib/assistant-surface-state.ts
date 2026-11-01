@@ -1,4 +1,4 @@
-export type AssistantSurfaceState = {
+type AssistantSurfaceState = {
   compactModalOpen: boolean;
   appShellInert: boolean;
   sidebarInert: boolean;

@@ -3,7 +3,16 @@ import { appFeedback, appFeedbackScreenshot, type AppFeedbackDiagnostics } from 
 import { FEEDBACK_LIMITS } from "@northwind/env/app-client-config";
 import { env } from "@northwind/env/server";
 
-import { feedbackScreenshotStorage, type FeedbackScreenshotStorage } from "./feedback-screenshots";
+import { IMAGE_TYPES, objectKey, objectStorage, type ObjectStorage, type StoragePurpose } from "./object-storage";
+
+/** Screenshots from the app's feedback form; the app sends JPEG only. */
+export const feedbackScreenshots = {
+  name: "app-feedback",
+  types: { "image/jpeg": IMAGE_TYPES["image/jpeg"] },
+  maxBytes: FEEDBACK_LIMITS.screenshotBytes,
+  uploadSeconds: 600,
+  viewSeconds: 600,
+} satisfies StoragePurpose;
 
 export type NewFeedback = {
   installationId: string;
@@ -35,7 +44,7 @@ export class FeedbackRateLimited extends Error {
   }
 }
 
-export type FeedbackStatus = "new" | "done";
+type FeedbackStatus = "new" | "done";
 
 const HOUR = 3_600;
 const DAY = 86_400;
@@ -79,12 +88,11 @@ export function createAppFeedbackStore(
           }
         }
         const id = crypto.randomUUID();
-        const month = at.toISOString().slice(0, 7);
-        const objectKey = `app-feedback/${environment}/${month}/${id}.jpg`;
+        const key = objectKey(feedbackScreenshots, { id, contentType: "image/jpeg", at, environment });
         await transaction.insert(appFeedbackScreenshot).values({
-          id, objectKey, installationId: input.installationId, ipHash: input.ipHash, byteLength: input.byteLength, createdAt: at,
+          id, objectKey: key, installationId: input.installationId, ipHash: input.ipHash, byteLength: input.byteLength, createdAt: at,
         });
-        return { id, objectKey, createdAt: at };
+        return { id, objectKey: key, createdAt: at };
       });
     },
 
@@ -237,7 +245,7 @@ export function createAppFeedbackStore(
      * unclaimed after a day, claimed but past retention, or left behind when
      * their feedback was deleted. A failed deletion keeps its row for next time.
      */
-    async purgeScreenshots(storage: FeedbackScreenshotStorage | null, batch = 200) {
+    async purgeScreenshots(storage: ObjectStorage | null, batch = 200) {
       if (!storage) return { deleted: 0, failed: 0 };
       const at = now().getTime();
       const unclaimedBefore = new Date(at - FEEDBACK_LIMITS.unclaimedUploadHours * HOUR * 1_000);
@@ -274,4 +282,4 @@ export const readAppFeedback = store.detail;
 export const setAppFeedbackStatus = store.setStatus;
 export const reserveFeedbackScreenshot = store.reserveScreenshot;
 export const claimableFeedbackScreenshot = store.claimableScreenshot;
-export const purgeFeedbackScreenshots = () => store.purgeScreenshots(feedbackScreenshotStorage);
+export const purgeFeedbackScreenshots = () => store.purgeScreenshots(objectStorage);

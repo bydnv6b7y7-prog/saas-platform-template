@@ -6,7 +6,7 @@ import type { AppStoreService } from "./service";
 
 const MAX_BODY = 64 * 1024;
 const signedBody = z.object({ signedTransaction: z.string().min(1).max(MAX_BODY) }).strict();
-export const APP_STORE_ERROR_CODES = Object.fromEntries(Object.entries(ERROR_MESSAGES).map(([code, message]) => [code, { code, message }])) as {
+const APP_STORE_ERROR_CODES = Object.fromEntries(Object.entries(ERROR_MESSAGES).map(([code, message]) => [code, { code, message }])) as {
   [K in keyof typeof ERROR_MESSAGES]: { code: K; message: typeof ERROR_MESSAGES[K] };
 };
 async function run<T>(work: () => Promise<T>): Promise<T> {

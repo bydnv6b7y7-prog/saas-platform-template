@@ -12,11 +12,12 @@
   },
   "scripts": {
     "check-types": "tsc --noEmit",
+    "test": "bun test src",
     "db:post-migrate": "echo 'No product post-migrate steps.'"
   },
   "dependencies": {
     "@northwind/api": "workspace:*",
-    "@northwind/env": "workspace:*",
+    "@northwind/db": "workspace:*",
     "@t3-oss/env-core": "^0.13.11",
     "@trpc/server": "catalog:",
     "dotenv": "catalog:",

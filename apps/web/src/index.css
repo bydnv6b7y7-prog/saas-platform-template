@@ -227,14 +227,14 @@ body {
   opacity: 0.62;
 }
 
-body.northwind-copilot-resizing {
+body.assistant-resizing {
   cursor: col-resize;
   user-select: none;
   -webkit-user-select: none;
   transition: none !important;
 }
 
-body.northwind-copilot-resizing [data-copilot-sidebar] {
+body.assistant-resizing [data-copilot-sidebar] {
   transition: none !important;
 }
 
@@ -243,13 +243,13 @@ body.northwind-copilot-resizing [data-copilot-sidebar] {
     bottom: calc(4.75rem + env(safe-area-inset-bottom));
   }
 
-  body.northwind-copilot-modal-open {
+  body.assistant-modal-open {
     margin-inline-end: 0 !important;
     overflow: hidden;
     transition: none !important;
   }
 
-  body.northwind-copilot-modal-open [data-copilot-sidebar] {
+  body.assistant-modal-open [data-copilot-sidebar] {
     --sidebar-width: 100vw !important;
     inset-inline: 0 !important;
     width: 100vw !important;
@@ -258,7 +258,7 @@ body.northwind-copilot-resizing [data-copilot-sidebar] {
     box-shadow: none;
   }
 
-  body.northwind-copilot-modal-open
+  body.assistant-modal-open
     [data-sidebar-chat]
     div:has(> [data-testid="copilot-chat-input"]) {
     padding-inline: 0 !important;
@@ -277,11 +277,11 @@ body.northwind-copilot-resizing [data-copilot-sidebar] {
     transition-timing-function: ease;
   }
 
-  [data-northwind-copilot][data-open="true"] .assistant-resize-handle {
+  [data-assistant][data-open="true"] .assistant-resize-handle {
     position: fixed;
     z-index: 1220;
     top: 0;
-    right: calc(var(--northwind-copilot-sidebar-width, 420px) - 9px);
+    right: calc(var(--assistant-sidebar-width, 420px) - 9px);
     display: flex;
     width: 18px;
     height: 100vh;
@@ -307,7 +307,7 @@ body.northwind-copilot-resizing [data-copilot-sidebar] {
 
   .assistant-resize-handle:hover > span,
   .assistant-resize-handle:focus-visible > span,
-  body.northwind-copilot-resizing .assistant-resize-handle > span {
+  body.assistant-resizing .assistant-resize-handle > span {
     height: 3rem;
     background: var(--brand);
     opacity: 1;

@@ -7,7 +7,7 @@ import { createContext, useContext } from "react";
 import type { AssistantRunPhase } from "@/lib/assistant-run-state";
 
 export const AGENT_ID = ASSISTANT_AGENT_ID;
-export const SIDEBAR_ID = "northwind-copilot-sidebar";
+export const SIDEBAR_ID = "assistant-sidebar";
 export const COMPACT_ASSISTANT_QUERY = "(max-width: 1099px)";
 export const COPILOT_RUNTIME_URL = `${env.VITE_SERVER_URL.replace(/\/$/, "")}/api/copilotkit`;
 const FOCUSABLE_SELECTOR = [
@@ -46,7 +46,7 @@ export const AssistantControlContext =
 export function useAssistantControl(): AssistantControlValue {
   const value = useContext(AssistantControlContext);
   if (!value) {
-    throw new Error("Assistant controls must be used inside AppStoreCopilot.");
+    throw new Error("Assistant controls must be used inside AssistantCopilot.");
   }
   return value;
 }

@@ -27,7 +27,6 @@ export const platformServerSchema = {
   GITHUB_CLIENT_ID: optionalNonEmptyString,
   GITHUB_CLIENT_SECRET: optionalNonEmptyString,
   APPLE_CLIENT_ID: optionalNonEmptyString,
-  APPLE_APP_BUNDLE_IDENTIFIER: optionalNonEmptyString,
   APPLE_TEAM_ID: optionalNonEmptyString,
   APPLE_KEY_ID: optionalNonEmptyString,
   /** Base64-encoded contents of the Sign in with Apple .p8 private key. */

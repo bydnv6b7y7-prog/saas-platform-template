@@ -2,7 +2,7 @@
 
 Private workspace integration for StoreKit 2 auto-renewable subscriptions using Apple's official server library. The host owns PostgreSQL DDL, configuration and lifecycle; the package supplies verified state processing, a Drizzle store, Better Auth endpoints and an independent browser client entry.
 
-The implemented contract and rollout checklist are in [the design document](../../packages/better-auth-app-store/README.md). The host feature is disabled by default.
+The implemented contract and rollout checklist are in [the design document](../../docs/app-store-subscriptions.md). The host feature is disabled by default.
 
 - `appStore(options)` registers the plugin and exposes its server-side `service`.
 - `./drizzle` exports `createAppStoreDrizzleStore({ db, tables, bundleId, environments })`.

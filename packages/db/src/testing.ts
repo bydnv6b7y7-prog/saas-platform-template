@@ -1,5 +1,9 @@
 import { readMigrationFiles } from "drizzle-orm/migrator";
-import type pg from "pg";
+import { drizzle } from "drizzle-orm/node-postgres";
+import pg from "pg";
+
+import type { db } from "./index";
+import * as schema from "./schema";
 
 const migrationsFolder = new URL("./migrations", import.meta.url).pathname;
 
@@ -24,4 +28,10 @@ export async function applyMigrationsFor(pool: Pick<pg.Pool, "query">, tables: r
       if (table && wanted.has(table)) await pool.query(statement);
     }
   }
+}
+
+/** A pool and drizzle client for one dedicated test database, typed like the application's `db`. */
+export function connectTestDatabase(url: string) {
+  const pool = new pg.Pool({ connectionString: url });
+  return { pool, db: drizzle({ client: pool, schema }) as unknown as typeof db };
 }

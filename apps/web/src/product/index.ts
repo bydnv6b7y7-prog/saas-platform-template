@@ -4,10 +4,12 @@
  */
 import type { AssistantPageContext } from "@northwind/product/assistant-contracts";
 import type { LinkProps } from "@tanstack/react-router";
-import { House, type LucideIcon } from "lucide-react";
+import { House, NotebookPen, type LucideIcon } from "lucide-react";
 import type { ComponentType, LazyExoticComponent } from "react";
 
 import type { SitemapEntry } from "@/lib/sitemap";
+
+import "./analytics";
 
 export type ProductLink = { to: NonNullable<LinkProps["to"]>; label: string; icon: LucideIcon };
 
@@ -15,14 +17,14 @@ export type ProductLink = { to: NonNullable<LinkProps["to"]>; label: string; ico
 export const productHome = { to: "/", label: "Home" } as const;
 
 /** Header links shown before the platform's Pricing link. */
-export const productNavLinks: readonly ProductLink[] = [{ to: "/", label: "Home", icon: House }];
+export const productNavLinks: readonly ProductLink[] = [{ to: "/", label: "Home", icon: House }, { to: "/notes", label: "My notes", icon: NotebookPen }];
 
 /** Extra signed-in account menu entries. */
 export const productAccountLinks: readonly ProductLink[] = [];
 
 /** Admin landing page and product Admin tabs (placed before the platform tabs). */
 export const productAdminHome = "/admin/users" as const;
-export const productAdminLinks: readonly ProductLink[] = [];
+export const productAdminLinks: readonly ProductLink[] = [{ to: "/admin/notes", label: "Notes", icon: NotebookPen }];
 
 /** Footer links next to Pricing / Privacy / Terms. */
 export const productFooterLinks: readonly Omit<ProductLink, "icon">[] = [];
@@ -51,10 +53,10 @@ export const productSeo = {
 
 export const productPricing = {
   title: "Start free. Upgrade when you need more.",
-  headline: "Start free. Pro raises the daily AI allowance.",
-  description: "Use the product and the AI assistant for free, or upgrade for higher AI limits.",
+  headline: "Start free. Pro raises the AI and storage allowances.",
+  description: "Use the product and the AI assistant for free, or upgrade for higher AI limits and more attachments.",
   freeSummary: "Everything you need to get started.",
-  freeFeatures: ["AI assistant with a daily allowance", "Private conversation history"],
+  freeFeatures: ["AI assistant with a daily allowance", "Private notes with 3 attachments", "Private conversation history"],
   freeFallback: "The free plan remains available.",
   ctaLabel: "Get started",
 };
@@ -73,5 +75,9 @@ export function assistantPageContextLabel(context: AssistantPageContext): string
 }
 
 export function assistantSuggestions(_context: AssistantPageContext): { title: string; message: string }[] {
-  return [{ title: "What can you do?", message: "What can you help me with here?" }];
+  return [
+    { title: "What can you do?", message: "What can you help me with here?" },
+    { title: "My notes", message: "What are my latest notes?" },
+    { title: "Draft a note", message: "Draft a note reminding me to renew my passport." },
+  ];
 }

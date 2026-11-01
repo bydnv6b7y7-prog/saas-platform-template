@@ -5,8 +5,8 @@ import {
 
 import { useAssistantControl } from "./context";
 
-export const AppStoreCopilotInput = Object.assign(
-  function AppStoreCopilotInput(props: CopilotChatInputProps) {
+export const AssistantInput = Object.assign(
+  function AssistantInput(props: CopilotChatInputProps) {
     const { usage } = useAssistantControl();
     const exhausted = usage?.daily.remaining === 0;
     const blocked = exhausted && !props.isRunning;

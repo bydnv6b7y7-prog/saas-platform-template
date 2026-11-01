@@ -12,7 +12,7 @@ const InstantScrollView = CopilotChatView.ScrollView as ComponentType<
   }
 >;
 
-export function AppStoreCopilotScrollView(props: ScrollViewProps) {
+export function AssistantScrollView(props: ScrollViewProps) {
   return (
     <InstantScrollView
       {...props}

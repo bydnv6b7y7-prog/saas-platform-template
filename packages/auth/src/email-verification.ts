@@ -11,6 +11,7 @@ import { createHash } from "node:crypto";
 import { z } from "zod";
 
 import type { SendEmail } from "./email";
+import { BRAND_NAME, IDENTIFIER_PREFIX } from "@northwind/env/brand";
 
 const sendPath = "/email-otp/send-verification-otp";
 const verifyPath = "/email-otp/verify-email";
@@ -67,8 +68,8 @@ export function createEmailVerificationOptions(sendEmail: SendEmail) {
         const minutes = EMAIL_VERIFICATION_EXPIRES_IN_SECONDS / 60;
         await sendEmail({
           to: email,
-          subject: "Your Northwind verification code",
-          text: `Your Northwind verification code is:\n\n${code}\n\nEnter this code in the app or website where you started signing in. This code expires in ${minutes} minutes and can only be used once.\n\nIf you did not request this email, you can ignore it.`,
+          subject: `Your ${BRAND_NAME} verification code`,
+          text: `Your ${BRAND_NAME} verification code is:\n\n${code}\n\nEnter this code in the app or website where you started signing in. This code expires in ${minutes} minutes and can only be used once.\n\nIf you did not request this email, you can ignore it.`,
           html: `<h1>Verify your email</h1><p>Enter this code in the app or website where you started signing in:</p><p style="font-size:32px;font-weight:700;letter-spacing:8px">${code}</p><p>This code expires in ${minutes} minutes and can only be used once.</p><p>If you did not request this email, you can ignore it.</p>`,
         });
       } catch {
@@ -89,7 +90,7 @@ export function createEmailVerificationOptions(sendEmail: SendEmail) {
       "/email-otp/request-email-change", "/email-otp/change-email",
     ],
     plugins: [otp, {
-      id: "northwind-email-verification-policy",
+      id: "email-verification-policy",
       hooks: {
         before: [{
           matcher: (ctx) => ctx.path === sendPath || ctx.path === verifyPath,
@@ -103,9 +104,9 @@ export function createEmailVerificationOptions(sendEmail: SendEmail) {
             }
             ctx.body.email = parsed.data;
             const identity = createHash("sha256").update(parsed.data).digest("hex");
-            const lease = await reserve(ctx, `northwind:email-otp:operation:${identity}`, 30);
+            const lease = await reserve(ctx, `${IDENTIFIER_PREFIX}:email-otp:operation:${identity}`, 30);
             try {
-              if (ctx.path === sendPath) await reserve(ctx, `northwind:email-otp:cooldown:${identity}`, EMAIL_VERIFICATION_RESEND_INTERVAL_SECONDS);
+              if (ctx.path === sendPath) await reserve(ctx, `${IDENTIFIER_PREFIX}:email-otp:cooldown:${identity}`, EMAIL_VERIFICATION_RESEND_INTERVAL_SECONDS);
               const account = await ctx.context.internalAdapter.findUserByEmail(parsed.data);
               if (!account || account.user.emailVerified) {
                 if (ctx.path === verifyPath) throw new APIError("BAD_REQUEST", { code: "INVALID_OTP", message: "This verification code cannot be used. Sign in or request a new code." });

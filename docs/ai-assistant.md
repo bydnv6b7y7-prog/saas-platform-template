@@ -219,7 +219,7 @@ its response reports only the non-secret provider and model ids.
 - An unauthenticated `/api/copilotkit/*` request must return `401`.
 - With the selected environment configuration missing or inconsistent, the runtime fails closed
   with `503` and does not expose credential material.
-- `bun run eval:agent` from `apps/server` runs opt-in live behavior checks with deterministic,
+- `bun run product eval:agent` from `apps/server` runs opt-in live behavior checks with deterministic,
   side-effect-free tool fixtures for tool selection, arguments, data-before-navigation ordering,
   and the one-navigation limit. Deterministic trajectory checks remain in the normal test suite.
 

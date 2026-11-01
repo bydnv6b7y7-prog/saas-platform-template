@@ -13,18 +13,18 @@ import {
 
 import { assistantUsageQueryKey } from "@/lib/assistant-usage";
 
-import { AppStoreCopilotBehavior } from "./behavior";
+import { AssistantBehavior } from "./behavior";
 import {
   AGENT_ID,
   AssistantControlContext,
   type AssistantControlValue,
 } from "./context";
-import { AppStoreCopilotInput } from "./input";
+import { AssistantInput } from "./input";
 import { useAssistantLifecycle } from "./lifecycle";
-import { AppStoreMessageView } from "./message-view";
+import { AssistantMessageView } from "./message-view";
 import { SidebarResizeHandle } from "./resize-handle";
-import { AppStoreCopilotScrollView } from "./scroll-view";
-import { AppStoreCopilotSidebarView } from "./sidebar-view";
+import { AssistantScrollView } from "./scroll-view";
+import { AssistantSidebarView } from "./sidebar-view";
 import {
   AssistantPageTools,
   AssistantToolRenderers,
@@ -32,17 +32,17 @@ import {
   assistantVerifyHint,
   useAssistantPageContext,
 } from "@/product/assistant";
-import { AppStoreWelcomeScreen } from "./welcome-screen";
+import { AssistantWelcomeScreen } from "./welcome-screen";
 
 function useRequiredChatConfiguration() {
   const configuration = useCopilotChatConfiguration();
   if (!configuration) {
-    throw new Error("Northwind AI must be rendered inside CopilotKit.");
+    throw new Error("The assistant must be rendered inside CopilotKit.");
   }
   return configuration;
 }
 
-export function AppStoreCopilotRuntime({
+export function AssistantRuntime({
   clearError,
   error,
   onOpenChange,
@@ -125,23 +125,23 @@ export function AppStoreCopilotRuntime({
   return (
     <AssistantControlContext.Provider value={controls}>
       <div
-        data-northwind-copilot
+        data-assistant
         data-open={open ? "true" : "false"}
         style={{ display: "contents" }}
       >
-        <AppStoreCopilotBehavior pageContext={pageContext} />
+        <AssistantBehavior pageContext={pageContext} />
         <AssistantPageTools />
         <AssistantToolRenderers />
         <SidebarResizeHandle />
         <CopilotChat
           agentId={AGENT_ID}
-          chatView={AppStoreCopilotSidebarView}
+          chatView={AssistantSidebarView}
           isModalDefaultOpen={false}
           onStop={stop}
-          input={AppStoreCopilotInput}
-          messageView={AppStoreMessageView}
-          scrollView={AppStoreCopilotScrollView}
-          welcomeScreen={AppStoreWelcomeScreen}
+          input={AssistantInput}
+          messageView={AssistantMessageView}
+          scrollView={AssistantScrollView}
+          welcomeScreen={AssistantWelcomeScreen}
           labels={{
             chatInputPlaceholder: assistantInputPlaceholder,
             chatDisclaimerText:

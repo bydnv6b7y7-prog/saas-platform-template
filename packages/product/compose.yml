@@ -1,0 +1,4 @@
+# Product services (background workers and their volumes), included by the root docker-compose.yml.
+# Paths are relative to this file; reference the image with build.context: ../.. and
+# dockerfile: apps/server/Dockerfile.
+services: {}

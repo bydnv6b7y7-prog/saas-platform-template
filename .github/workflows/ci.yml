@@ -54,52 +54,17 @@ jobs:
           VITE_SERVER_URL: http://localhost:3000
           VITE_WEB_URL: http://localhost:3001
           VITE_ENABLE_INDEXING: "false"
+      - name: Unused files, exports and dependencies
+        run: bun run check:unused
       - name: Unit tests
         run: bun run test
         env:
           SKIP_ENV_VALIDATION: "1"
-      - name: App Store PostgreSQL integration tests
-        run: bun test packages/db/src/iap.integration.test.ts
+      # The same list as CI and the release gate (scripts/test-postgres.ts).
+      - name: PostgreSQL integration tests
+        run: bun run test:postgres
         env:
-          IAP_TEST_DATABASE_URL: postgresql://iap_test:iap_test_local_only@127.0.0.1:56432/iap_test
-      - name: Email OTP PostgreSQL integration tests
-        run: |
-          bun -e 'const url = new URL(process.env.EMAIL_OTP_TEST_DATABASE_URL); url.pathname = "/postgres"; const db = new Bun.SQL(url.href); await db.unsafe("CREATE DATABASE email_otp_test"); await db.close();'
-          bun test packages/auth/src/email-otp.postgres.test.ts
-        env:
-          SKIP_ENV_VALIDATION: "1"
-          EMAIL_OTP_TEST_DATABASE_URL: postgresql://iap_test:iap_test_local_only@127.0.0.1:56432/email_otp_test
-      - name: Admin users PostgreSQL integration tests
-        run: |
-          bun -e 'const url = new URL(process.env.ADMIN_USERS_TEST_DATABASE_URL); url.pathname = "/postgres"; const db = new Bun.SQL(url.href); await db.unsafe("CREATE DATABASE northwind_admin_users_test"); await db.close();'
-          bun test packages/auth/src/admin-users.postgres.test.ts
-        env:
-          SKIP_ENV_VALIDATION: "1"
-          ADMIN_USERS_TEST_DATABASE_URL: postgresql://iap_test:iap_test_local_only@127.0.0.1:56432/northwind_admin_users_test
-      # Same suite as the release gate in deploy.yml, so a pull request cannot pass what a release rejects.
-      - name: Operational settings PostgreSQL integration tests
-        run: |
-          bun -e 'const url = new URL(process.env.OPS_TEST_DATABASE_URL); url.pathname = "/postgres"; const db = new Bun.SQL(url.href); await db.unsafe("CREATE DATABASE northwind_config_governance_test"); await db.close();'
-          bun test packages/api/src/operational-settings.integration.test.ts
-        env:
-          SKIP_ENV_VALIDATION: "1"
-          OPS_TEST_DATABASE_URL: postgresql://iap_test:iap_test_local_only@127.0.0.1:56432/northwind_config_governance_test
-      # Same suite as the release gate in deploy.yml, so a pull request cannot pass what a release rejects.
-      - name: App Store Admin PostgreSQL integration tests
-        run: |
-          bun -e 'const url = new URL(process.env.IAP_ADMIN_TEST_DATABASE_URL); url.pathname = "/postgres"; const db = new Bun.SQL(url.href); await db.unsafe("CREATE DATABASE northwind_iap_admin_test"); await db.close();'
-          bun test packages/api/src/app-store-admin.integration.test.ts
-        env:
-          SKIP_ENV_VALIDATION: "1"
-          IAP_ADMIN_TEST_DATABASE_URL: postgresql://iap_test:iap_test_local_only@127.0.0.1:56432/northwind_iap_admin_test
-      # Same suite as the release gate in deploy.yml, so a pull request cannot pass what a release rejects.
-      - name: App feedback PostgreSQL integration tests
-        run: |
-          bun -e 'const url = new URL(process.env.APP_FEEDBACK_TEST_DATABASE_URL); url.pathname = "/postgres"; const db = new Bun.SQL(url.href); await db.unsafe("CREATE DATABASE northwind_app_feedback_test"); await db.close();'
-          bun test apps/server/src/app-client/app-client.integration.test.ts
-        env:
-          SKIP_ENV_VALIDATION: "1"
-          APP_FEEDBACK_TEST_DATABASE_URL: postgresql://iap_test:iap_test_local_only@127.0.0.1:56432/northwind_app_feedback_test
+          TEST_POSTGRES_URL: postgresql://iap_test:iap_test_local_only@127.0.0.1:56432
       - name: Production build
         run: bun run build
         env:
@@ -127,7 +92,7 @@ jobs:
             fi
             sleep 1
           done
-          if ! WEB_BASE_URL=http://127.0.0.1:3001 EXPECTED_SHA=ci EXPECT_INDEXING=0 \
+          if ! WEB_BASE_URL=http://127.0.0.1:3001 EXPECTED_SHA=ci SMOKE_LEVEL=basic EXPECT_INDEXING=0 \
             bash scripts/web-smoke.sh; then
             cat /tmp/web-ssr.log
             exit 1
