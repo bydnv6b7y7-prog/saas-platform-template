@@ -499,6 +499,7 @@ async function main() {
     `BETTER_AUTH_URL=${VITE_SERVER_URL}`,
     `CORS_ORIGIN=${VITE_WEB_URL}`,
     `ADMIN_USER_IDS=${adminUserIds}`,
+    `DEPLOY_STAGE=${POLICY.stage}`,
     `LOG_LEVEL=${localEnv.LOG_LEVEL || "info"}`,
     `HTTP_LOG_SAMPLE_RATE=${localEnv.HTTP_LOG_SAMPLE_RATE || "0.1"}`,
     `HTTP_SLOW_REQUEST_MS=${localEnv.HTTP_SLOW_REQUEST_MS || "1000"}`,

@@ -15,6 +15,8 @@ const CATALOG_TTL_MS = 5 * 60 * 1_000;
 
 export type StripeBillingEnvironment = {
   NODE_ENV?: string;
+  /** production (default) runs on Live keys only; staging on test keys only, so it can never charge anyone. */
+  DEPLOY_STAGE?: string;
   STRIPE_SECRET_KEY?: string;
   STRIPE_WEBHOOK_SECRET?: string;
   STRIPE_PRICE_PRO_MONTHLY?: string;
@@ -76,8 +78,12 @@ export function resolveStripeBillingConfiguration(
       "STRIPE_SECRET_KEY must be a Stripe secret, restricted, or claimable sandbox API key",
     );
   }
-  if (environment.NODE_ENV === "production" && secretMode !== "live") {
-    throw new Error("Production billing requires a Stripe Live secret key");
+  if (environment.NODE_ENV === "production") {
+    if (environment.DEPLOY_STAGE === "staging") {
+      if (secretMode === "live") throw new Error("Staging billing requires a Stripe test or sandbox key, never a Live key");
+    } else if (secretMode !== "live") {
+      throw new Error("Production billing requires a Stripe Live secret key");
+    }
   }
   if (!webhookSecret.startsWith("whsec_")) {
     throw new Error("STRIPE_WEBHOOK_SECRET must be a Stripe endpoint signing secret");

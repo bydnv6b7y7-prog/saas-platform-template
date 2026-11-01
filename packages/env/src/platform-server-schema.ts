@@ -37,6 +37,8 @@ export const platformServerSchema = {
   STRIPE_PRICE_PRO_MONTHLY: optionalNonEmptyString,
   STRIPE_PRICE_PRO_YEARLY: optionalNonEmptyString,
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
+  /** Set by deploy:provision: production (Live Stripe keys) or staging (test keys). */
+  DEPLOY_STAGE: z.enum(["production", "staging"]).default("production"),
   LOG_LEVEL: z.enum(["info", "warn", "error", "silent"]).default("info"),
   /** Routine HTTP sample rate. Server errors, rate limits, slow requests, and auth writes are kept. */
   HTTP_LOG_SAMPLE_RATE: z.coerce.number().min(0).max(1).optional(),

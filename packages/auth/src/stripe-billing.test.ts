@@ -94,6 +94,19 @@ describe("Stripe billing configuration", () => {
       }),
     ).toMatchObject({ configured: true, livemode: true });
   });
+
+  test("a staging release runs on test keys and refuses Live keys", () => {
+    expect(resolveStripeBillingConfiguration({ ...completeEnvironment, NODE_ENV: "production", DEPLOY_STAGE: "staging" }))
+      .toMatchObject({ configured: true, livemode: false });
+    expect(() =>
+      resolveStripeBillingConfiguration({
+        ...completeEnvironment,
+        NODE_ENV: "production",
+        DEPLOY_STAGE: "staging",
+        STRIPE_SECRET_KEY: "sk_live_example",
+      }),
+    ).toThrow("never a Live key");
+  });
 });
 
 describe("Stripe billing catalog", () => {
