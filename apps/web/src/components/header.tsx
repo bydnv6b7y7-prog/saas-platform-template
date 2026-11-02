@@ -80,11 +80,9 @@ export default function Header({
             {user ? (
               <Suspense
                 fallback={
-                  <span
-                    className="grid size-11 place-items-center rounded-xl text-muted-foreground"
-                    aria-label="Loading account menu"
-                  >
+                  <span role="status" className="grid size-11 place-items-center rounded-xl text-muted-foreground">
                     <CircleUserRound className="size-5" aria-hidden="true" />
+                    <span className="sr-only">Loading account menu</span>
                   </span>
                 }
               >
