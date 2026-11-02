@@ -79,7 +79,7 @@ function AdminFeedbackPage() {
                       <span className="font-medium text-foreground">{CATEGORY_LABELS[item.category] ?? item.category}</span>
                       <span>{formatUtcDateTime(item.createdAt)}</span>
                       {item.appVersion ? <span>v{item.appVersion}</span> : null}
-                      {item.hasScreenshot ? <ImageIcon className="size-3.5" aria-label="Has a screenshot" /> : null}
+                      {item.hasScreenshot ? <ImageIcon className="size-3.5" role="img" aria-label="Has a screenshot" /> : null}
                       {item.status === "done" ? <span>· Done</span> : null}
                     </p>
                     <p className="mt-1 line-clamp-2 text-sm">{item.message}</p>
